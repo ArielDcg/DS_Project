@@ -1,0 +1,12 @@
+# Compilados de C++
+*.out
+*.exe
+*.o
+*.obj
+
+# Archivos temporales
+*.log
+*.tmp
+
+# Carpetas de compilación
+/build/
