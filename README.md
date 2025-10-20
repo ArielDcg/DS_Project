@@ -1,5 +1,6 @@
 # DS_Project
-
+## Setup en Windows
+[MsysQuickSetup](docs/windows.md)
 ## Download SFML 
 Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](docs/SFML_INSTALLATION.md)
 
