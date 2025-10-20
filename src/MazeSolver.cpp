@@ -1,29 +1,33 @@
-struct MazeSolver {
-    Grid &g;
-    Coord start, goal;
-    std::stack<Coord> path;
-    std::vector<std::vector<bool>> visited;
-    bool solved = false;
+#include "MazeSolver.h"
+#include <algorithm>
 
-    MazeSolver(Grid &grid, Coord s, Coord g) : g(grid), start(s), goal(g) {
-        visited.resize(g.width(), std::vector<bool>(g.height(), false));
-        path.push(start);
-        visited[start.x][start.y] = true;
-    };
+MazeSolver::MazeSolver(Grid &grid, Coord s, Coord g)
+    : g(grid), start(s), goal(g), visited(grid.width(), std::vector<bool>(grid.height(), false)),
+      cameFrom(grid.width(), std::vector<Coord>(grid.height(), Coord(-1, -1))) {
+    path.push(start);
+    visited[start.x][start.y] = true;
+}
 
-    bool step() {
-        if (solved || path.empty()) return true;
+bool MazeSolver::step() {
+    if (solved || path.empty()) return true;
 
-        Coord cur = path.top();
-        if (cur == goal) {
-            solved = true;
-            return true;
-        };
+    Coord cur = path.top();
 
-        for (int dir = 0; dir < 4; ++dir) {
+    if (cur.x == goal.x && cur.y == goal.y) {
+        // reconstruir el camino
+        Coord step = goal;
+        while (!(step.x == -1 && step.y == -1)) {
+            solution.push_back(step);
+            step = cameFrom[step.x][step.y];
+        }
+        std::reverse(solution.begin(), solution.end());
+        solved = true;
+        return true;
+    }
+
+    for (int dir = 0; dir < 4; ++dir) {
+        if (!g.at(cur.x, cur.y).walls[dir]) {
             int nx = cur.x, ny = cur.y;
-            if (!g.canMove(cur.x, cur.y, dir)) continue;
-
             if (dir == 0) ny -= 1;
             else if (dir == 1) nx -= 1;
             else if (dir == 2) nx += 1;
@@ -33,15 +37,28 @@ struct MazeSolver {
             if (visited[nx][ny]) continue;
 
             visited[nx][ny] = true;
+            cameFrom[nx][ny] = cur;
             path.push(Coord(nx, ny));
             return false;
-        };
+        }
+    }
 
-        path.pop(); // retrocede si no hay salida
-        return false;
-    };
+    path.pop(); // retrocede si no hay salida
+    return false;
+}
 
-    bool finished() const { return solved; }
-    bool getCurrent(Coord &out) const { if (path.empty()) return false; out = path.top(); return true; }
-};
+bool MazeSolver::finished() const {
+    return solved;
+}
+
+bool MazeSolver::getCurrent(Coord &out) const {
+    if (path.empty()) return false;
+    out = path.top();
+    return true;
+}
+
+const std::vector<Coord> &MazeSolver::getSolution() const {
+    return solution;
+}
+
 
