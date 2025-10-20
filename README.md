@@ -1,9 +1,8 @@
 # DS_Project
 
 ## Download SFML 
-```bash
-sudo pacman -S sfml
-```
+Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](docs/SMFL_INSTALLATION.md)
+
 ## Compile main.cpp from terminal
 command to compile it
 ```bash
