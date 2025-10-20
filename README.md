@@ -10,3 +10,11 @@ command to compile it
 g++ main.cpp -o maze -lsfml-graphics -lsfml-window -lsfml-system
 ```
 
+## Build with CMake
+copiar el repo  
+cd repo  
+ Put the files into the structure shown earlier.  
+ `mkdir build && cd build`  
+ `cmake ..`  
+ `cmake --build .`  
+ Run `./maze_app`  
