@@ -2,15 +2,16 @@
 #include "Grid.h"
 #include "MazeAlgorithm.h"
 #include "Menu.h"
+#include "MazeSolver.h" 
 
 // include algorithm implementations
 #include "DFSAlgorithm.cpp"
 #include "PrimsAlgorithm.cpp"
+#include "MazeSolver.cpp" 
 
 #include <memory>
 #include <string>
 
-// simple renderer & animation loop
 void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::string &title, sf::Font *fontPtr = nullptr) {
     unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
     unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
@@ -20,6 +21,11 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
     sf::Clock clock;
     sf::Time accumulator = sf::Time::Zero;
     sf::Time stepTime = sf::milliseconds(8);
+
+    Coord start(0, 0);
+    Coord goal(grid.width() - 1, grid.height() - 1);
+    MazeSolver solver(grid, start, goal);
+    bool solving = false;
 
     auto drawLine = [&](sf::RenderTarget &target, float x1, float y1, float x2, float y2, const sf::Color &col) {
         sf::Vertex verts[2];
@@ -37,8 +43,14 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
         }
 
         accumulator += clock.restart();
-        while (accumulator >= stepTime && !algo.finished()) {
-            algo.step();
+        while (accumulator >= stepTime) {
+            if (!algo.finished()) {
+                algo.step();
+            } else if (!solving) {
+                solving = true;
+            } else if (!solver.finished()) {
+                solver.step();
+            }
             accumulator -= stepTime;
         }
 
@@ -64,11 +76,21 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
         }
 
         Coord cur;
-        if (algo.getCurrent(cur)) {
+        if (!algo.finished() && algo.getCurrent(cur)) {
             sf::RectangleShape curRect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
             curRect.setPosition(sf::Vector2f(static_cast<float>(cur.x * cellSize), static_cast<float>(cur.y * cellSize)));
             curRect.setFillColor(sf::Color(0, 160, 0, 160));
             window.draw(curRect);
+        }
+
+        if (solver.finished()) {
+            const std::vector<Coord> &path = solver.getSolution();
+            for (const Coord &c : path) {
+                sf::RectangleShape rect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
+                rect.setPosition(sf::Vector2f(static_cast<float>(c.x * cellSize), static_cast<float>(c.y * cellSize)));
+                rect.setFillColor(sf::Color(0, 120, 255, 160)); // azul claro
+                window.draw(rect);
+            }
         }
 
         if (fontPtr) {
