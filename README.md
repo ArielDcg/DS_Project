@@ -18,3 +18,7 @@ cd repo
  `cmake ..`  
  `cmake --build .`  
  Run `./maze_app`  
+
+
+ Si hay errores, remover el oldMain.cpp, ya que CMake es sensible a diferentes main en el mismo folder
+ 
