@@ -27,6 +27,8 @@ public:
     // returns a random neighbor direction or -1 if none
     int pickRandomNeighborDir(int x, int y) const;
 
+    bool canMove
+
 private:
     int m_width;
     int m_height;
