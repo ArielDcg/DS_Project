@@ -1,11 +1,14 @@
 # DS_Project
 ## Setup en Windows
 [MsysQuickSetup](docs/windows.md)
+
+## Setup Linux
 ## Download SFML 
 Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](docs/SFML_INSTALLATION.md)
+Se recomienda utilizar la última versión 3.0
 
-## Compile main.cpp from terminal
-command to compile it
+## Compile main.cpp en terminal
+Comando con g++
 ```bash
 g++ main.cpp -o maze -lsfml-graphics -lsfml-window -lsfml-system
 ```
@@ -13,7 +16,6 @@ g++ main.cpp -o maze -lsfml-graphics -lsfml-window -lsfml-system
 ## Build with CMake
 copiar el repo  
 cd repo  
- Put the files into the structure shown earlier.  
  `mkdir build && cd build`  
  `cmake ..`  
  `cmake --build .`  
