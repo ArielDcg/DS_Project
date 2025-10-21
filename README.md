@@ -149,16 +149,13 @@ Verificación de la propiedad de laberinto perfecto mediante búsqueda de camino
 ### Análisis de Complejidad
 
 #### DFS Generation
-- **Tiempo**: O(n) donde n es el número de celdas
-- **Espacio**: O(n) por la pila de backtracking
 
-#### Prim's Algorithm  
-- **Tiempo**: O(n log n) por el manejo de fronteras
-- **Espacio**: O(n) para almacenar fronteras
-
-#### Kruskal's Algorithm
-- **Tiempo**: O(n log n) por la cola de prioridad y Union-Find
-- **Espacio**: O(n) para almacenar aristas y conjuntos
+|Algoritmo|Complejidad Temporal|Complejidad Espacial|Característica|
+|---|---|---|---|
+|**Hunt-and-Kill**|O(n²) peor caso|O(1) adicional|Búsqueda secuencial costosa|
+|DFS|O(n)|O(n) stack|Backtracking eficiente|
+|Prim's|O(n log n)|O(n) frontier|Manejo de fronteras|
+|Kruskal|O(n log n)|O(n) Union-Find|Procesamiento por pesos|
 
 ---
 
