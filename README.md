@@ -1,4 +1,8 @@
 # DS_Project
+## Intro
+En este proyecto se exploran 4 algoritmos para generar un laberinto perfecto, el cual no tiene loops y cuenta con solo una solución. 
+Los algoritmos implementados fueron DFS, Primas
+
 ## Setup en Windows
 [MsysQuickSetup](docs/windows.md)
 
