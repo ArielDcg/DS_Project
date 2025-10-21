@@ -1,7 +1,6 @@
 # DS_Project
 ## Manual de Usuario
 Para realizar el setup, dirígase al manual [manual](docs/manualDeUsuario.md)
-Aquí tienes la documentación técnica en formato Markdown, con un enfoque más formal y estructurado:
 
 ## Generación de Laberintos Perfectos - Documentación 
 
