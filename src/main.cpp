@@ -7,7 +7,9 @@
 // include algorithm implementations
 #include "DFSAlgorithm.cpp"
 #include "PrimsAlgorithm.cpp"
-#include "MazeSolver.cpp" 
+#include "HuntAndKillAlgorithm.cpp"
+#include "KruskalsAlgorithm.cpp"
+
 
 #include <memory>
 #include <string>
@@ -130,6 +132,14 @@ int main() {
         case 1:
             algo.reset(new PrimsAlgorithm(grid));
             title = "Prim's (incremental)";
+            break;
+        case 2:
+            algo.reset(new HuntAndKillAlgorithm(grid));
+            title = "Hunt and Kill Algorithm";
+            break;
+        case 3:
+            algo.reset(new KruskalsAlgorithm(grid));
+            title = "KruskalsAlgorithm";
             break;
         default:
             algo.reset(new DFSAlgorithm(grid));

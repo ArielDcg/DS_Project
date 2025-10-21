@@ -10,3 +10,4 @@
 
 # Carpetas de compilación
 /build/
+.vscode/
