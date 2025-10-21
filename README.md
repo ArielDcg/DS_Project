@@ -16,10 +16,12 @@ g++ main.cpp -o maze -lsfml-graphics -lsfml-window -lsfml-system
 ## Build with CMake
 copiar el repo  
 cd repo  
- `mkdir build && cd build`  
- `cmake ..`  
- `cmake --build .`  
- Run `./maze_app`  
+```bash
+  mkdir build && cd build  
+  cmake ..
+  cmake --build .  
+ ./maze_app
+```  
 
 
  Si hay errores, remover el oldMain.cpp, ya que CMake es sensible a diferentes main en el mismo folder
