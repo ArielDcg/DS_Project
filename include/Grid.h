@@ -26,6 +26,8 @@ public:
     bool removeWall(int row, int column, short wall);
     // returns a random neighbor direction or -1 if none
     int pickRandomNeighborDir(int x, int y) const;
+    // checks if moving in a certain direction is possible
+    bool canMove(int x, int y, int dir) const;
 
 private:
     int m_width;

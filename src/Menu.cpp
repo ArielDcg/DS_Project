@@ -5,12 +5,11 @@ Menu::Menu() {
     options = {
         "DFS (Recursive Backtracker)",
         "Prim's (incremental)",
-        "Kruskal's (placeholder)",
-        "Recursive Division (placeholder)"
+        "Hunt and Kill Algorithm",
+        "Kruskas Algorithm"
     };
 
-    if (font.openFromFile("resources/DejaVuSans.ttf") ||
-        font.openFromFile("DejaVuSans.ttf") ||
+    if (font.openFromFile("assets/arial.ttf") ||
         font.openFromFile("arial.ttf")) {
         fontLoaded = true;
     } else {

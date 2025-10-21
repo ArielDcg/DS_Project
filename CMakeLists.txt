@@ -15,3 +15,10 @@ pkg_check_modules(SFML_PKG REQUIRED IMPORTED_TARGET sfml-graphics)
 target_include_directories(maze_app PRIVATE ${SFML_PKG_INCLUDE_DIRS})
 target_compile_options(maze_app PRIVATE ${SFML_PKG_CFLAGS_OTHER})
 target_link_libraries(maze_app PRIVATE ${SFML_PKG_LIBRARIES})
+
+# Copy assets to build directory automatically
+add_custom_command(TARGET maze_app POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            ${CMAKE_CURRENT_BINARY_DIR}/assets
+)

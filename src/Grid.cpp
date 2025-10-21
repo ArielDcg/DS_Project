@@ -35,3 +35,8 @@ int Grid::pickRandomNeighborDir(int x, int y) const {
     if (candidates.empty()) return -1;
     return candidates[std::rand() % candidates.size()];
 }
+
+bool Grid::canMove(int x, int y, int dir) const {
+    const Cell &cell = at(x, y);
+    return !cell.walls[dir];
+};
