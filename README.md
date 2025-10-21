@@ -1,9 +1,9 @@
 # DS_Project
-
+## Setup en Windows
+[MsysQuickSetup](docs/windows.md)
 ## Download SFML 
-```bash
-sudo pacman -S sfml
-```
+Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](docs/SFML_INSTALLATION.md)
+
 ## Compile main.cpp from terminal
 command to compile it
 ```bash
