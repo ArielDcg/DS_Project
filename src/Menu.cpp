@@ -6,7 +6,7 @@ Menu::Menu() {
         "DFS (Recursive Backtracker)",
         "Prim's (incremental)",
         "Hunt and Kill Algorithm",
-        "Kruskas Algorithm"
+        "Kruskal's Algorithm"
     };
 
     if (font.openFromFile("assets/arial.ttf") ||
