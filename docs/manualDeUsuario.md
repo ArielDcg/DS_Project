@@ -1,9 +1,9 @@
 ## Setup en Windows
-[MsysQuickSetup](docs/windows.md)
+[MsysQuickSetup](windows.md)
 
 ## Setup Linux
 ## Download SFML 
-Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](docs/SFML_INSTALLATION.md)
+Para poder utilizar la interfaz grafica es necesario instalar SFML, como se especifica a continuacion.[SFML](SFML_INSTALLATION.md)
 Se recomienda utilizar la última versión 3.0
 
 ## Compile main.cpp en terminal
