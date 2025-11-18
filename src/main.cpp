@@ -1,8 +1,10 @@
+// src/main.cpp
 #include <SFML/Graphics.hpp>
 #include "Grid.h"
 #include "MazeAlgorithm.h"
 #include "Menu.h"
-#include "MazeSolver.h" 
+#include "MazeSolver.h"
+#include "AStarSolver.h"   // ensure this exists
 
 // include algorithm implementations
 #include "DFSAlgorithm.cpp"
@@ -10,11 +12,12 @@
 #include "HuntAndKillAlgorithm.cpp"
 #include "KruskalsAlgorithm.cpp"
 
-
 #include <memory>
 #include <string>
+#include <vector>
+#include <ctime>
 
-void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::string &title, sf::Font *fontPtr = nullptr) {
+void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::string &title, const sf::Font *fontPtr = nullptr) {
     unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
     unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), title);
@@ -24,10 +27,16 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
     sf::Time accumulator = sf::Time::Zero;
     sf::Time stepTime = sf::milliseconds(8);
 
+    // solver state
+    bool solverChosen = false;
+    enum SolverType { SOLVER_NONE = 0, SOLVER_DFS, SOLVER_ASTAR };
+    SolverType solverType = SOLVER_NONE;
+
+    std::unique_ptr<MazeSolver> dfsSolver;
+    std::unique_ptr<AStarSolver> aStarSolver;
+
     Coord start(0, 0);
     Coord goal(grid.width() - 1, grid.height() - 1);
-    MazeSolver solver(grid, start, goal);
-    bool solving = false;
 
     auto drawLine = [&](sf::RenderTarget &target, float x1, float y1, float x2, float y2, const sf::Color &col) {
         sf::Vertex verts[2];
@@ -39,6 +48,7 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
     };
 
     while (window.isOpen()) {
+        // SFML3: pollEvent returns std::optional<sf::Event>
         while (auto evOpt = window.pollEvent()) {
             const sf::Event &ev = *evOpt;
             if (ev.is<sf::Event::Closed>()) { window.close(); break; }
@@ -48,10 +58,34 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
         while (accumulator >= stepTime) {
             if (!algo.finished()) {
                 algo.step();
-            } else if (!solving) {
-                solving = true;
-            } else if (!solver.finished()) {
-                solver.step();
+            } else {
+                if (!solverChosen) {
+                    std::vector<std::string> solverOptions = {
+                        "DFS (stack) - uses your MazeSolver",
+                        "A* (Manhattan) - incremental A*"
+                    };
+                    Menu solverMenu(solverOptions, "Choose Solver Algorithm");
+                    int solverChoice = solverMenu.run(window);
+                    if (solverChoice < 0) {
+                        window.close();
+                        return;
+                    }
+
+                    if (solverChoice == 0) {
+                        dfsSolver = std::make_unique<MazeSolver>(grid, start, goal);
+                        solverType = SOLVER_DFS;
+                    } else {
+                        aStarSolver = std::make_unique<AStarSolver>(grid, start, goal);
+                        solverType = SOLVER_ASTAR;
+                    }
+                    solverChosen = true;
+                } else {
+                    if (solverType == SOLVER_DFS) {
+                        if (dfsSolver && !dfsSolver->finished()) dfsSolver->step();
+                    } else if (solverType == SOLVER_ASTAR) {
+                        if (aStarSolver && !aStarSolver->finished()) aStarSolver->step();
+                    }
+                }
             }
             accumulator -= stepTime;
         }
@@ -77,24 +111,50 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
             }
         }
 
-        Coord cur;
-        if (!algo.finished() && algo.getCurrent(cur)) {
+        // generator current
+        Coord genCur;
+        if (!algo.finished() && algo.getCurrent(genCur)) {
             sf::RectangleShape curRect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
-            curRect.setPosition(sf::Vector2f(static_cast<float>(cur.x * cellSize), static_cast<float>(cur.y * cellSize)));
+            curRect.setPosition(sf::Vector2f(static_cast<float>(genCur.x * cellSize), static_cast<float>(genCur.y * cellSize)));
             curRect.setFillColor(sf::Color(0, 160, 0, 160));
             window.draw(curRect);
         }
 
-        if (solver.finished()) {
-            const std::vector<Coord> &path = solver.getSolution();
-            for (const Coord &c : path) {
-                sf::RectangleShape rect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
-                rect.setPosition(sf::Vector2f(static_cast<float>(c.x * cellSize), static_cast<float>(c.y * cellSize)));
-                rect.setFillColor(sf::Color(0, 120, 255, 160)); // azul claro
-                window.draw(rect);
+        // solver visuals
+        if (solverChosen) {
+            Coord cur;
+            if (solverType == SOLVER_DFS && dfsSolver && dfsSolver->getCurrent(cur)) {
+                sf::RectangleShape curRect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
+                curRect.setPosition(sf::Vector2f(static_cast<float>(cur.x * cellSize), static_cast<float>(cur.y * cellSize)));
+                curRect.setFillColor(sf::Color(200, 120, 0, 160));
+                window.draw(curRect);
+            } else if (solverType == SOLVER_ASTAR && aStarSolver && aStarSolver->getCurrent(cur)) {
+                sf::RectangleShape curRect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
+                curRect.setPosition(sf::Vector2f(static_cast<float>(cur.x * cellSize), static_cast<float>(cur.y * cellSize)));
+                curRect.setFillColor(sf::Color(200, 120, 0, 160));
+                window.draw(curRect);
+            }
+
+            // final path
+            if ((solverType == SOLVER_DFS && dfsSolver && dfsSolver->finished()) ||
+                (solverType == SOLVER_ASTAR && aStarSolver && aStarSolver->finished())) {
+
+                const std::vector<Coord> *pathPtr = nullptr;
+                if (solverType == SOLVER_DFS && dfsSolver) pathPtr = &dfsSolver->getSolution();
+                if (solverType == SOLVER_ASTAR && aStarSolver) pathPtr = &aStarSolver->getSolution();
+
+                if (pathPtr) {
+                    for (const Coord &c : *pathPtr) {
+                        sf::RectangleShape rect(sf::Vector2f(static_cast<float>(cellSize), static_cast<float>(cellSize)));
+                        rect.setPosition(sf::Vector2f(static_cast<float>(c.x * cellSize), static_cast<float>(c.y * cellSize)));
+                        rect.setFillColor(sf::Color(0, 120, 255, 160));
+                        window.draw(rect);
+                    }
+                }
             }
         }
 
+        // draw title if font provided
         if (fontPtr) {
             sf::Text t(*fontPtr, title, 16);
             t.setPosition(sf::Vector2f(4.f, 4.f));
@@ -147,7 +207,7 @@ int main() {
             break;
     }
 
-    sf::Font *fontPtr = menu.fontLoaded ? &menu.font : nullptr;
+    const sf::Font *fontPtr = menu.isFontLoaded() ? &menu.getFont() : nullptr;
     runAlgorithm(grid, *algo, CELL_SIZE, title, fontPtr);
 
     return 0;

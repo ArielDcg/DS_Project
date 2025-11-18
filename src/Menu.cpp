@@ -1,7 +1,9 @@
+// src/Menu.cpp
 #include "Menu.h"
 #include <iostream>
 
-Menu::Menu() {
+Menu::Menu()
+    : title("Choose Algorithm") {
     options = {
         "DFS (Recursive Backtracker)",
         "Prim's (incremental)",
@@ -9,11 +11,21 @@ Menu::Menu() {
         "Kruskal's Algorithm"
     };
 
-    if (font.openFromFile("assets/arial.ttf") ||
-        font.openFromFile("arial.ttf")) {
+    // SFML 3 uses openFromFile
+    if (font.openFromFile("assets/arial.ttf") || font.openFromFile("arial.ttf")) {
         fontLoaded = true;
     } else {
-        std::cerr << "Warning: couldn't load DejaVuSans.ttf or arial.ttf — menu text will be hidden.";
+        std::cerr << "Warning: couldn't load arial.ttf — menu text will be hidden.\n";
+        fontLoaded = false;
+    }
+}
+
+Menu::Menu(const std::vector<std::string>& opts, const std::string& t)
+    : options(opts), title(t) {
+    if (font.openFromFile("assets/arial.ttf") || font.openFromFile("arial.ttf")) {
+        fontLoaded = true;
+    } else {
+        std::cerr << "Warning: couldn't load arial.ttf — menu text will be hidden.\n";
         fontLoaded = false;
     }
 }
@@ -29,7 +41,12 @@ int Menu::run(sf::RenderWindow &window) {
     sf::Time debounce = sf::milliseconds(160);
     sf::Time last = sf::Time::Zero;
 
+    // ensure selected in range
+    if (selected < 0) selected = 0;
+    if (selected >= static_cast<int>(options.size())) selected = 0;
+
     while (window.isOpen()) {
+        // SFML 3: pollEvent returns std::optional<sf::Event>
         while (auto evOpt = window.pollEvent()) {
             const sf::Event &ev = *evOpt;
             if (ev.is<sf::Event::Closed>()) return -1;
@@ -63,11 +80,12 @@ int Menu::run(sf::RenderWindow &window) {
 
         window.clear(sf::Color(30, 30, 30));
 
+        // draw title using constructor that takes a font
         if (fontLoaded) {
-            sf::Text title(font, "Choose Algorithm", 32);
-            title.setPosition(sf::Vector2f(static_cast<float>(W / 2 - 160), static_cast<float>(startY - 96)));
-            title.setFillColor(sf::Color::White);
-            window.draw(title);
+            sf::Text titleText(font, title, 32);
+            titleText.setPosition(sf::Vector2f(static_cast<float>(W / 2 - 160), static_cast<float>(startY - 96)));
+            titleText.setFillColor(sf::Color::White);
+            window.draw(titleText);
         }
 
         for (size_t i = 0; i < options.size(); ++i) {
