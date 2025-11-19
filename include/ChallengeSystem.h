@@ -1,0 +1,63 @@
+#pragma once
+#include "Grid.h"
+#include <unordered_map>
+#include <vector>
+
+// ===================================
+// FUNCIÓN HASH PERSONALIZADA
+// ===================================
+struct CoordHash {
+    std::size_t operator()(const Coord& c) const {
+        std::size_t h1 = std::hash<int>{}(c.x);
+        std::size_t h2 = std::hash<int>{}(c.y);
+        // XOR + bit shift para evitar colisiones
+        return h1 ^ (h2 << 1);
+    }
+};
+
+enum class SpecialElement {
+    TREASURE,
+    NONE
+};
+
+// ===================================
+// SISTEMA DE DESAFÍOS CON TABLA HASH
+// ===================================
+class ChallengeSystem {
+public:
+    ChallengeSystem(Grid& grid);
+    
+    // Colocar tesoro en posición específica (para algoritmos de generación)
+    void placeTreasureAt(const Coord& pos);
+    
+    // Verificar si una coordenada tiene tesoro
+    bool hasTreasure(const Coord& pos) const;
+    
+    // Recolectar tesoro (cambia estado a NONE)
+    bool collectTreasure(const Coord& pos);
+    
+    // Obtener todas las posiciones de tesoros
+    const std::vector<Coord>& getTreasurePositions() const;
+    
+    // Verificar si todos fueron recolectados
+    bool allTreasuresCollected() const;
+    
+    // Número de tesoros restantes
+    int remainingTreasures() const;
+    
+    // Limpiar todos los tesoros
+    void clear();
+
+    // Público para que CollectorSolver pueda acceder
+    int collectedCount = 0;
+
+private:
+    Grid& g;
+    
+    // TABLA HASH: Coord -> SpecialElement
+    // Búsqueda O(1) promedio
+    std::unordered_map<Coord, SpecialElement, CoordHash> elements;
+    
+    // Lista para iterar fácilmente
+    std::vector<Coord> treasurePositions;
+};
