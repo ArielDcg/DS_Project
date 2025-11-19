@@ -1,26 +1,23 @@
-#ifndef ASTAR_SOLVER_H
-#define ASTAR_SOLVER_H
+#ifndef UCS_SOLVER_H
+#define UCS_SOLVER_H
 
 #include "Grid.h"
 #include <vector>
 #include <queue>
 #include <limits>
 
-class AStarSolver {
+class UCSSolver {
 public:
-    AStarSolver(Grid &grid, Coord start, Coord goal);
+    UCSSolver(Grid &grid, Coord start, Coord goal);
 
-    // one atomic expansion step (returns true when finished)
     bool step();
 
     bool finished() const;
     bool getCurrent(Coord &out) const;
     const std::vector<Coord> &getSolution() const;
 
-    // NEW: visualization helpers
     enum CellState { UNKNOWN = 0, OPEN = 1, CLOSED = 2 };
     const std::vector<std::vector<CellState>> &getStateGrid() const { return stateGrid; }
-    // gScores for heatmap; infinity if unreachable
     const std::vector<std::vector<float>> &getGScoreGrid() const { return gScore; }
 
 private:
@@ -31,14 +28,13 @@ private:
     std::vector<std::vector<CellState>> stateGrid;
     std::vector<std::vector<bool>> closed;
     std::vector<std::vector<float>> gScore;
-    std::vector<std::vector<float>> fScore;
     std::vector<std::vector<Coord>> cameFrom;
 
-    struct PQNode { float f; int id; int x; int y; };
+    struct PQNode { float cost; int id; int x; int y; };
     struct Compare {
         bool operator()(const PQNode &a, const PQNode &b) const {
-            if (a.f == b.f) return a.id > b.id;
-            return a.f > b.f;
+            if (a.cost == b.cost) return a.id > b.id;
+            return a.cost > b.cost;
         }
     };
     std::priority_queue<PQNode, std::vector<PQNode>, Compare> openPQ;
@@ -47,10 +43,9 @@ private:
     bool done = false;
     bool solved = false;
     std::vector<Coord> solution;
-    Coord current; // last node popped (for visualization)
+    Coord current;
 
-    float heuristic(int x, int y) const;
     void reconstruct_path(int x, int y);
 };
 
-#endif // ASTAR_SOLVER_H
+#endif // UCS_SOLVER_H
