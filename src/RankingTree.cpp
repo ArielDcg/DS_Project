@@ -1,9 +1,5 @@
 #include "RankingTree.h"
 
-// =====================
-// Implementación RankingTree
-// =====================
-
 RankingTree::RankingTree(RankingMode mode) : mode_(mode) {}
 
 void RankingTree::setMode(RankingMode m) {
@@ -46,10 +42,6 @@ void RankingTree::exportCSV(const std::string& path) const {
     }
 }
 
-// =====================
-// Funciones privadas
-// =====================
-
 RankingKey RankingTree::keyOf(const AlgorithmStats& s) const {
     switch (mode_) {
         case RankingMode::ByAvgTime:
@@ -68,3 +60,4 @@ void RankingTree::rebuildIndex() {
     for (auto& [_, s] : stats_) vals.push_back(s);
     avl_.rebuild(vals, [this](const AlgorithmStats& s){ return keyOf(s); });
 }
+
