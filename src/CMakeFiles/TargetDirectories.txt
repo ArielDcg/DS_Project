@@ -1,0 +1,3 @@
+/home/arielo/repos/DS_Project/src/CMakeFiles/maze_app.dir
+/home/arielo/repos/DS_Project/src/CMakeFiles/edit_cache.dir
+/home/arielo/repos/DS_Project/src/CMakeFiles/rebuild_cache.dir
