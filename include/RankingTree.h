@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AlgorithmStats.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -8,41 +9,8 @@
 #include <iomanip>
 #include <algorithm>
 
-// =====================
-// Métricas por algoritmo
-// =====================
-struct AlgorithmStats {
-    std::string name;
-    double lastTimeMs = 0.0;
-    int lastNodesExplored = 0;
-    int lastPathLength = 0;
-
-    int runs = 0;
-    double sumTimeMs = 0.0;
-    long long sumNodes = 0;
-    long long sumPathLen = 0;
-
-    double avgTimeMs() const { return runs ? sumTimeMs / runs : 0.0; }
-    double avgNodes() const { return runs ? (double)sumNodes / runs : 0.0; }
-    double avgPathLen() const { return runs ? (double)sumPathLen / runs : 0.0; }
-
-    // Score combinado: menor es mejor
-    double efficiencyScore() const {
-        constexpr double wTime = 0.5;
-        constexpr double wNodes = 0.4;
-        constexpr double wPath = 0.1;
-        return wTime * avgTimeMs() + wNodes * avgNodes() + wPath * avgPathLen();
-    }
-};
-
-// =====================
-// Modos de ranking
-// =====================
 enum class RankingMode { ByAvgTime, ByAvgNodes, ByEfficiency };
 
-// =====================
-// Clave de ordenamiento
-// =====================
 struct RankingKey {
     double primary;
     double tie1;
@@ -60,9 +28,6 @@ struct RankingKey {
     }
 };
 
-// =====================
-// Nodo AVL genérico
-// =====================
 template<typename K, typename V>
 struct AvlNode {
     K key;
@@ -73,9 +38,6 @@ struct AvlNode {
     explicit AvlNode(const K& k, const V& v) : key(k), value(v) {}
 };
 
-// =====================
-// Árbol AVL genérico
-// =====================
 template<typename K, typename V>
 class AvlTree {
 public:
@@ -159,71 +121,24 @@ private:
     }
 };
 
-// =====================
-// Clase RankingTree
-// =====================
 class RankingTree {
 public:
-    explicit RankingTree(RankingMode mode = RankingMode::ByEfficiency) : mode_(mode) {}
+    explicit RankingTree(RankingMode mode = RankingMode::ByEfficiency);
 
-    void setMode(RankingMode m) { mode_ = m; rebuildIndex(); }
+    void setMode(RankingMode m);
+    void recordRun(const std::string& algName, double timeMs, int nodesExplored, int pathLength);
 
-    void recordRun(const std::string& algName, double timeMs, int nodesExplored, int pathLength) {
-        auto& s = stats_[algName];
-        s.name = algName;
-        s.lastTimeMs = timeMs;
-        s.lastNodesExplored = nodesExplored;
-        s.lastPathLength = pathLength;
-        s.runs++;
-        s.sumTimeMs += timeMs;
-        s.sumNodes += nodesExplored;
-        s.sumPathLen += pathLength;
-        avl_.upsert(keyOf(s), s);
-    }
+    std::vector<AlgorithmStats> topK(int k) const;
+    std::vector<AlgorithmStats> all() const;
 
-    std::vector<AlgorithmStats> topK(int k) const {
-        std::vector<AlgorithmStats> out;
-        avl_.getTopK(k, out);
-        return out;
-    }
-
-    std::vector<AlgorithmStats> all() const {
-        std::vector<AlgorithmStats> out;
-        avl_.getTopK((int)stats_.size(), out);
-        return out;
-    }
-
-    void exportCSV(const std::string& path) const {
-        std::ofstream f(path);
-        f << "Algorithm,Runs,AvgTimeMs,AvgNodes,AvgPathLen,Efficiency\n";
-        for (auto& s : all()) {
-            f << s.name << "," << s.runs << ","
-              << s.avgTimeMs() << "," << s.avgNodes() << ","
-              << s.avgPathLen() << "," << s.efficiencyScore() << "\n";
-        }
-    }
+    void exportCSV(const std::string& path) const;
 
 private:
     RankingMode mode_;
     std::unordered_map<std::string, AlgorithmStats> stats_;
     AvlTree<RankingKey, AlgorithmStats> avl_;
 
-    RankingKey keyOf(const AlgorithmStats& s) const {
-        switch (mode_) {
-            case RankingMode::ByAvgTime:
-                return { s.avgTimeMs(), s.efficiencyScore(), s.avgNodes(), s.name };
-            case RankingMode::ByAvgNodes:
-                return { s.avgNodes(), s.efficiencyScore(), s.avgTimeMs(), s.name };
-            case RankingMode::ByEfficiency:
-            default:
-                return { s.efficiencyScore(), s.avgTimeMs(), s.avgNodes(), s.name };
-        }
-    }
-
-    void rebuildIndex() {
-        std::vector<AlgorithmStats> vals;
-        vals.reserve(stats_.size());
-        for (auto& [_, s] : stats_) vals.push_back(s);
-        avl_.rebuild(vals, [this](const AlgorithmStats& s){ return keyOf(s); });
-    }
+    RankingKey keyOf(const AlgorithmStats& s) const;
+    void rebuildIndex();
 };
+
