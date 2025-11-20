@@ -14,16 +14,16 @@ set(SRC_FILES
     src/AStarSolver.cpp
     src/GreedySolver.cpp
     src/UCSSolver.cpp
-    
+
     # ESTRUCTURA 1: Tabla Hash
     src/ChallengeSystem.cpp
-    
-    # ESTRUCTURA 2: Matriz Dispersa ← AGREGAR ESTO
+
+    # ESTRUCTURA 2: Matriz Dispersa
     src/ExplorationHeatmap.cpp
-    
-    # ESTRUCTURA 3: Árbol AVL (si lo vas a usar)
-    # src/AlgorithmRankingAVL.cpp
-    
+
+    # ESTRUCTURA 3: Árbol AVL
+    src/AlgorithmRankingAVL.cpp
+
     # Solver
     src/CollectorSolver.cpp
 )

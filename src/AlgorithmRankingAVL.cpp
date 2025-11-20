@@ -149,9 +149,10 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::balance(AVLNode* node) {
     if (balanceFactor < -1 && getBalance(node->right) > 0) {
         return rotateRightLeft(node);
     }
-    
+
     // Ya está balanceado
     return node;
+}
 
 
 void AlgorithmRankingAVL::insert(const AlgorithmStats& stats) {

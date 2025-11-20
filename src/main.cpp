@@ -9,6 +9,8 @@
 #include "UCSSolver.h"
 #include "ChallengeSystem.h"
 #include "CollectorSolver.h"
+#include "AlgorithmRankingAVL.h"
+#include "ExplorationHeatmap.h"
 
 #include "DFSAlgorithm.cpp"
 #include "PrimsAlgorithm.cpp"
@@ -23,6 +25,8 @@
 #include <cstdint>
 #include <limits>
 #include <algorithm>
+#include <chrono>
+#include <iostream>
 
 std::string getStrategyName(SolverStrategy strategy) {
     switch (strategy) {
@@ -502,6 +506,351 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
     }
 }
 
+// ===================================
+// BENCHMARK Y RANKING DE ALGORITMOS
+// ===================================
+
+AlgorithmStats runBenchmark(const std::string& genAlgo, SolverStrategy strategy,
+                            const std::string& solverName, int gridW, int gridH) {
+    AlgorithmStats stats;
+    stats.generationAlgo = genAlgo;
+    stats.algorithmName = solverName;
+
+    Grid grid(gridW, gridH);
+    ChallengeSystem challenges(grid);
+
+    Coord start(gridW / 2, gridH / 2);
+    Coord goal = getRandomCorner(grid, start);
+
+    // Generar laberinto (sin visualización)
+    std::unique_ptr<MazeAlgorithm> algo;
+    if (genAlgo == "DFS") {
+        algo.reset(new DFSCollectorAlgorithm(grid, &challenges));
+    } else if (genAlgo == "Prim's") {
+        algo.reset(new PrimsCollectorAlgorithm(grid, &challenges));
+    } else if (genAlgo == "Hunt&Kill") {
+        algo.reset(new HuntAndKillCollectorAlgorithm(grid, &challenges));
+    } else if (genAlgo == "Kruskal's") {
+        algo.reset(new KruskalsCollectorAlgorithm(grid, &challenges));
+    }
+
+    while (!algo->finished()) {
+        algo->step();
+    }
+
+    // Resolver laberinto (sin visualización)
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    CollectorSolver solver(grid, challenges, start, goal, strategy);
+    int nodesExpanded = 0;
+
+    while (!solver.finished()) {
+        solver.step();
+        nodesExpanded++;
+    }
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> duration = endTime - startTime;
+
+    // Recopilar estadísticas
+    stats.nodesExpanded = nodesExpanded;
+    stats.pathLength = static_cast<int>(solver.getFullPath().size());
+    stats.executionTime = duration.count();
+    stats.treasuresCollected = solver.getTreasuresCollected();
+
+    return stats;
+}
+
+void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
+    const int GRID_W = 40;
+    const int GRID_H = 28;
+    const int ITERATIONS = 50;  // Número de iteraciones por combinación
+
+    std::vector<std::string> genAlgos = {"DFS", "Prim's", "Hunt&Kill", "Kruskal's"};
+    std::vector<std::pair<SolverStrategy, std::string>> solvers = {
+        {SolverStrategy::ASTAR, "A*"},
+        {SolverStrategy::GREEDY, "Greedy"},
+        {SolverStrategy::UCS, "UCS"},
+        {SolverStrategy::DFS, "DFS"}
+    };
+
+    AlgorithmRankingAVL ranking;
+
+    std::cout << "\n=== Ejecutando Benchmark de Algoritmos ===\n";
+    std::cout << "Iteraciones por combinación: " << ITERATIONS << "\n";
+    std::cout << "Total de combinaciones: " << genAlgos.size() * solvers.size() << "\n\n";
+
+    int totalTests = genAlgos.size() * solvers.size() * ITERATIONS;
+    int currentTest = 0;
+
+    // Ejecutar benchmarks
+    for (const auto& genAlgo : genAlgos) {
+        for (const auto& solverPair : solvers) {
+            std::cout << "Testing: " << genAlgo << " + " << solverPair.second << "... ";
+
+            AlgorithmStats avgStats;
+            avgStats.algorithmName = solverPair.second;
+            avgStats.generationAlgo = genAlgo;
+
+            for (int i = 0; i < ITERATIONS; i++) {
+                AlgorithmStats stats = runBenchmark(genAlgo, solverPair.first, solverPair.second, GRID_W, GRID_H);
+                avgStats.nodesExpanded += stats.nodesExpanded;
+                avgStats.pathLength += stats.pathLength;
+                avgStats.executionTime += stats.executionTime;
+                avgStats.treasuresCollected += stats.treasuresCollected;
+
+                currentTest++;
+            }
+
+            // Calcular promedios
+            avgStats.nodesExpanded /= ITERATIONS;
+            avgStats.pathLength /= ITERATIONS;
+            avgStats.executionTime /= ITERATIONS;
+            avgStats.treasuresCollected /= ITERATIONS;
+
+            ranking.insert(avgStats);
+            std::cout << "Score: " << avgStats.calculateScore() << "\n";
+        }
+    }
+
+    std::cout << "\n=== Benchmark Completado ===\n\n";
+
+    // Mostrar resultados en ventana
+    std::vector<RankEntry> topRankings = ranking.getAll();
+
+    sf::RenderWindow rankWindow(sf::VideoMode(sf::Vector2u(1000, 700)), "Algorithm Ranking Results");
+    rankWindow.setFramerateLimit(60);
+
+    while (rankWindow.isOpen()) {
+        while (auto evOpt = rankWindow.pollEvent()) {
+            const sf::Event& ev = *evOpt;
+            if (ev.is<sf::Event::Closed>()) {
+                rankWindow.close();
+                return;
+            }
+            if (ev.is<sf::Event::KeyPressed>()) {
+                rankWindow.close();
+                return;
+            }
+        }
+
+        rankWindow.clear(sf::Color(30, 30, 40));
+
+        if (fontPtr) {
+            // Título
+            sf::Text titleText(*fontPtr, "Algorithm Ranking (AVL Tree)", 28);
+            titleText.setPosition(sf::Vector2f(30, 20));
+            titleText.setFillColor(sf::Color(255, 215, 0));
+            rankWindow.draw(titleText);
+
+            // Subtítulo
+            sf::Text subtitle(*fontPtr, "Promedio de " + std::to_string(ITERATIONS) + " ejecuciones por combinación", 16);
+            subtitle.setPosition(sf::Vector2f(30, 55));
+            subtitle.setFillColor(sf::Color(180, 180, 180));
+            rankWindow.draw(subtitle);
+
+            // Encabezados
+            float yPos = 100;
+            sf::Text header(*fontPtr, "Rank  Algorithm + Generation       Score    Nodes   Path   Time(ms)  Treasures", 14);
+            header.setPosition(sf::Vector2f(30, yPos));
+            header.setFillColor(sf::Color(200, 200, 200));
+            header.setStyle(sf::Text::Bold);
+            rankWindow.draw(header);
+
+            yPos += 30;
+
+            // Resultados
+            for (size_t i = 0; i < topRankings.size() && i < 15; i++) {
+                const RankEntry& entry = topRankings[i];
+
+                sf::Color rowColor = (i < 3) ? sf::Color(100, 200, 100) : sf::Color(200, 200, 200);
+
+                std::string line =
+                    std::to_string(entry.rank) + ".    " +
+                    entry.stats.algorithmName + " + " + entry.stats.generationAlgo;
+
+                // Padding para alinear
+                while (line.length() < 35) line += " ";
+
+                line += std::to_string(static_cast<int>(entry.stats.calculateScore())) + "     ";
+                line += std::to_string(entry.stats.nodesExpanded) + "      ";
+                line += std::to_string(entry.stats.pathLength) + "     ";
+                line += std::to_string(static_cast<int>(entry.stats.executionTime * 1000)) + "       ";
+                line += std::to_string(entry.stats.treasuresCollected);
+
+                sf::Text rankText(*fontPtr, line, 13);
+                rankText.setPosition(sf::Vector2f(30, yPos));
+                rankText.setFillColor(rowColor);
+                rankWindow.draw(rankText);
+
+                yPos += 25;
+            }
+
+            // Instrucciones
+            sf::Text hint(*fontPtr, "Press any key or ESC to return to menu", 14);
+            hint.setPosition(sf::Vector2f(30, 650));
+            hint.setFillColor(sf::Color(150, 150, 150));
+            rankWindow.draw(hint);
+
+            // Info del árbol AVL
+            sf::Text treeInfo(*fontPtr, "AVL Tree - Size: " + std::to_string(ranking.size()) +
+                             " | Height: " + std::to_string(ranking.getHeight()) +
+                             " | Balanced: " + (ranking.isBalanced() ? "Yes" : "No"), 12);
+            treeInfo.setPosition(sf::Vector2f(30, 625));
+            treeInfo.setFillColor(sf::Color(255, 215, 0));
+            rankWindow.draw(treeInfo);
+        }
+
+        rankWindow.display();
+    }
+}
+
+void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr) {
+    const int GRID_W = 40;
+    const int GRID_H = 28;
+    const int CELL_SIZE = 20;
+
+    // Generar laberinto y resolver con A*
+    Grid grid(GRID_W, GRID_H);
+    ChallengeSystem challenges(grid);
+
+    Coord start(GRID_W / 2, GRID_H / 2);
+    Coord goal = getRandomCorner(grid, start);
+
+    std::unique_ptr<MazeAlgorithm> algo(new DFSCollectorAlgorithm(grid, &challenges));
+    while (!algo->finished()) {
+        algo->step();
+    }
+
+    CollectorSolver solver(grid, challenges, start, goal, SolverStrategy::ASTAR);
+    while (!solver.finished()) {
+        solver.step();
+    }
+
+    const ExplorationHeatmap& heatmap = solver.getHeatmap();
+    ExplorationHeatmap::HeatmapStats stats = heatmap.getStats();
+    std::vector<std::vector<float>> normalizedGrid = heatmap.toNormalizedGrid();
+
+    // Ventana de visualización
+    sf::RenderWindow heatWindow(sf::VideoMode(sf::Vector2u(GRID_W * CELL_SIZE + 300, GRID_H * CELL_SIZE)),
+                                "Exploration Heatmap (Sparse Matrix)");
+    heatWindow.setFramerateLimit(60);
+
+    while (heatWindow.isOpen()) {
+        while (auto evOpt = heatWindow.pollEvent()) {
+            const sf::Event& ev = *evOpt;
+            if (ev.is<sf::Event::Closed>()) {
+                heatWindow.close();
+                return;
+            }
+            if (ev.is<sf::Event::KeyPressed>()) {
+                heatWindow.close();
+                return;
+            }
+        }
+
+        heatWindow.clear(sf::Color(20, 20, 20));
+
+        // Dibujar heatmap
+        for (int y = 0; y < GRID_H; y++) {
+            for (int x = 0; x < GRID_W; x++) {
+                float intensity = normalizedGrid[x][y];
+
+                sf::RectangleShape cell(sf::Vector2f(CELL_SIZE, CELL_SIZE));
+                cell.setPosition(sf::Vector2f(x * CELL_SIZE, y * CELL_SIZE));
+
+                // Gradiente: azul (frío) -> verde -> amarillo -> rojo (caliente)
+                sf::Color cellColor;
+                if (intensity == 0.0f) {
+                    cellColor = sf::Color(10, 10, 10);  // No visitado
+                } else if (intensity < 0.33f) {
+                    float t = intensity / 0.33f;
+                    cellColor = sf::Color(0, static_cast<sf::Uint8>(t * 100), static_cast<sf::Uint8>(100 + t * 155));
+                } else if (intensity < 0.66f) {
+                    float t = (intensity - 0.33f) / 0.33f;
+                    cellColor = sf::Color(static_cast<sf::Uint8>(t * 255), static_cast<sf::Uint8>(100 + t * 155), static_cast<sf::Uint8>(255 - t * 255));
+                } else {
+                    float t = (intensity - 0.66f) / 0.34f;
+                    cellColor = sf::Color(255, static_cast<sf::Uint8>(255 - t * 100), 0);
+                }
+
+                cell.setFillColor(cellColor);
+                heatWindow.draw(cell);
+            }
+        }
+
+        // Panel de información
+        if (fontPtr) {
+            float panelX = GRID_W * CELL_SIZE + 20;
+            float yPos = 20;
+
+            sf::Text title(*fontPtr, "Heatmap Stats", 20);
+            title.setPosition(sf::Vector2f(panelX, yPos));
+            title.setFillColor(sf::Color(255, 215, 0));
+            heatWindow.draw(title);
+
+            yPos += 40;
+
+            std::vector<std::string> infoLines = {
+                "Total Visits: " + std::to_string(stats.totalVisits),
+                "Unique Cells: " + std::to_string(stats.uniqueCells),
+                "Max Visits: " + std::to_string(stats.maxVisits),
+                "Avg Visits: " + std::to_string(static_cast<int>(stats.avgVisits)),
+                "Coverage: " + std::to_string(static_cast<int>(stats.densityPercent)) + "%",
+                "",
+                "Sparse Matrix:",
+                "Size: " + std::to_string(stats.uniqueCells) + " entries",
+                "vs Full: " + std::to_string(GRID_W * GRID_H),
+                "Saved: " + std::to_string(GRID_W * GRID_H - stats.uniqueCells)
+            };
+
+            for (const auto& line : infoLines) {
+                sf::Text text(*fontPtr, line, 14);
+                text.setPosition(sf::Vector2f(panelX, yPos));
+                text.setFillColor(sf::Color::White);
+                heatWindow.draw(text);
+                yPos += 25;
+            }
+
+            // Leyenda de colores
+            yPos += 20;
+            sf::Text legendTitle(*fontPtr, "Color Legend:", 16);
+            legendTitle.setPosition(sf::Vector2f(panelX, yPos));
+            legendTitle.setFillColor(sf::Color(255, 215, 0));
+            heatWindow.draw(legendTitle);
+            yPos += 30;
+
+            std::vector<std::pair<std::string, sf::Color>> legend = {
+                {"Low", sf::Color(0, 100, 255)},
+                {"Medium", sf::Color(0, 255, 100)},
+                {"High", sf::Color(255, 255, 0)},
+                {"Very High", sf::Color(255, 100, 0)}
+            };
+
+            for (const auto& item : legend) {
+                sf::RectangleShape colorBox(sf::Vector2f(20, 20));
+                colorBox.setPosition(sf::Vector2f(panelX, yPos));
+                colorBox.setFillColor(item.second);
+                heatWindow.draw(colorBox);
+
+                sf::Text label(*fontPtr, item.first, 12);
+                label.setPosition(sf::Vector2f(panelX + 30, yPos + 3));
+                label.setFillColor(sf::Color::White);
+                heatWindow.draw(label);
+                yPos += 30;
+            }
+
+            // Hint
+            sf::Text hint(*fontPtr, "Press any key to exit", 12);
+            hint.setPosition(sf::Vector2f(panelX, GRID_H * CELL_SIZE - 30));
+            hint.setFillColor(sf::Color(150, 150, 150));
+            heatWindow.draw(hint);
+        }
+
+        heatWindow.display();
+    }
+}
+
 int main() {
     const int GRID_W = 40;
     const int GRID_H = 28;
@@ -518,11 +867,23 @@ int main() {
         // Menú 1: Modo
         std::vector<std::string> modeOptions = {
             "Classic Mode",
-            "Collector Mode (3 Treasures)"
+            "Collector Mode (3 Treasures)",
+            "Algorithm Ranking (AVL Tree)",
+            "Exploration Heatmap (Sparse Matrix)"
         };
         Menu modeMenu(modeOptions, "Select Game Mode");
         int modeChoice = modeMenu.run(menuWindow);
         if (modeChoice < 0) break;
+
+        // Opciones especiales: Ranking y Heatmap
+        if (modeChoice == 2) {
+            runAlgorithmRanking(menuWindow, fontPtr);
+            continue;
+        }
+        if (modeChoice == 3) {
+            showHeatmapVisualization(menuWindow, fontPtr);
+            continue;
+        }
 
         bool isCollectorMode = (modeChoice == 1);
 
