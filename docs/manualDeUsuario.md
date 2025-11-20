@@ -24,3 +24,9 @@ cd repo
 
 
  Si hay errores, remover el oldMain.cpp, ya que CMake es sensible a diferentes main en el mismo folder
+
+ Para hacer benchmark de los solvers utilice la siguiente línea:
+ ```bash
+  ./maze_app --benchmark
+```  
+score se calcula con la siguiente fórmula: score = 1.0 * tiempo + 0.001 * nodos + 0.1 * longitud
