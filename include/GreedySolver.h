@@ -10,7 +10,6 @@ class GreedySolver {
 public:
     GreedySolver(Grid &grid, Coord start, Coord goal);
 
-    // advance one step; returns true if finished (solved or impossible)
     bool step();
 
     bool finished() const;
@@ -29,7 +28,7 @@ private:
 
     std::vector<std::vector<CellState>> stateGrid;
     std::vector<std::vector<bool>> closed;
-    std::vector<std::vector<float>> gScore; // still keep gScore for heatmap
+    std::vector<std::vector<float>> gScore;
     std::vector<std::vector<Coord>> cameFrom;
 
     struct PQNode { float h; int id; int x; int y; };
@@ -51,4 +50,4 @@ private:
     void reconstruct_path(int x, int y);
 };
 
-#endif // GREEDY_SOLVER_H
+#endif 

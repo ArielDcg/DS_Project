@@ -3,14 +3,6 @@
 #include <vector>
 #include <memory>
 
-// ===================================
-// ÁRBOL AVL
-// ESTRUCTURA 3 de 3 (✅ Por implementar)
-// ===================================
-// Árbol auto-balanceado para ranking dinámico
-// Uso: Ordenar algoritmos por eficiencia
-// Operaciones: O(log n) insert, update, search
-// ===================================
 
 // Métricas de un algoritmo
 struct AlgorithmStats {
@@ -21,7 +13,7 @@ struct AlgorithmStats {
     float executionTime = 0.0f;  // Tiempo en segundos
     int treasuresCollected = 0;  // Tesoros recolectados
     
-    // Score compuesto (mayor = mejor)
+    // Puntuacion compuesta (mayor = mejor)
     float calculateScore() const;
     
     // Clave única: algorithmName + generationAlgo

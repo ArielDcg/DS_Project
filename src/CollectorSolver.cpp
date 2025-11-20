@@ -36,9 +36,6 @@ float CollectorSolver::manhattan(const Coord& a, const Coord& b) const {
     return static_cast<float>(std::abs(a.x - b.x) + std::abs(a.y - b.y));
 }
 
-// ===================================
-// GREEDY MEJORADO (CORREGIDO)
-// ===================================
 std::vector<Coord> CollectorSolver::greedyOrderTreasures(
     Coord from, 
     const std::vector<Coord>& treasures, 
@@ -114,9 +111,6 @@ float CollectorSolver::heuristic(int x, int y, const Coord& goal) const {
     return static_cast<float>(std::abs(goal.x - x) + std::abs(goal.y - y));
 }
 
-// ===================================
-// 🆕 RECOLECCIÓN OPORTUNISTA
-// ===================================
 void CollectorSolver::checkOpportunisticCollection() {
     if (challenges.hasTreasure(currentPos)) {
         // ¿Es un tesoro que NO es mi objetivo actual?
@@ -172,10 +166,7 @@ bool CollectorSolver::step() {
         }
         return false;
     }
-    
-    // ===================================
-    // DISPATCHER DE ESTRATEGIA
-    // ===================================
+
     switch (strategy) {
         case SolverStrategy::ASTAR:
             return stepAStar();
@@ -190,9 +181,6 @@ bool CollectorSolver::step() {
     return false;
 }
 
-// ===================================
-// A* ALGORITHM
-// ===================================
 bool CollectorSolver::stepAStar() {
     if (openPQ.empty()) {
         segmentDone = true;
@@ -214,15 +202,9 @@ bool CollectorSolver::stepAStar() {
     
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
-    
-    // ===================================
-    // 🆕 REGISTRO EN HEATMAP (MATRIZ DISPERSA)
-    // ===================================
+
     heatmap.recordVisit(cx, cy);
-    
-    // ===================================
-    // 🆕 DETECCIÓN OPORTUNISTA
-    // ===================================
+
     checkOpportunisticCollection();
     
     // ¿Llegamos al objetivo?
@@ -271,9 +253,6 @@ bool CollectorSolver::stepAStar() {
     return false;
 }
 
-// ===================================
-// GREEDY BEST-FIRST
-// ===================================
 bool CollectorSolver::stepGreedy() {
     if (openPQ.empty()) {
         segmentDone = true;
@@ -296,7 +275,7 @@ bool CollectorSolver::stepGreedy() {
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
     
-    heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
+    heatmap.recordVisit(cx, cy); 
     
     checkOpportunisticCollection();
     
@@ -342,11 +321,6 @@ bool CollectorSolver::stepGreedy() {
     return false;
 }
 
-// ===================================
-// UNIFORM COST SEARCH (Dijkstra)
-// ===================================
-// UNIFORM COST SEARCH (Dijkstra)
-// ===================================
 bool CollectorSolver::stepUCS() {
     if (openPQ.empty()) {
         segmentDone = true;
@@ -369,7 +343,7 @@ bool CollectorSolver::stepUCS() {
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
     
-    heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
+    heatmap.recordVisit(cx, cy);  
     
     checkOpportunisticCollection();
     

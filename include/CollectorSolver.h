@@ -6,20 +6,14 @@
 #include <queue>
 #include <limits>
 
-// ===================================
-// ESTRATEGIAS DE PATHFINDING
-// ===================================
 enum class SolverStrategy {
-    ASTAR,      // f = g + h (costo + heurística Manhattan)
-    GREEDY,     // f = h (solo heurística)
-    UCS,        // f = g (solo costo, Dijkstra)
-    DFS         // Depth-first search (stack)
+    ASTAR,      
+    GREEDY,     
+    UCS,        
+    DFS        
 };
 
-// ===================================
-// SEGMENTO DE CAMINO
-// Para mantener colores persistentes
-// ===================================
+
 struct PathSegment {
     std::vector<Coord> path;
     int objectiveIndex;  // 0=T1, 1=T2, 2=T3, 3=Meta
@@ -29,9 +23,7 @@ struct PathSegment {
     PathSegment() : objectiveIndex(0), foundBonus(false) {}
 };
 
-// ===================================
-// COLLECTOR SOLVER
-// ===================================
+
 class CollectorSolver {
 public:
     CollectorSolver(Grid& grid, ChallengeSystem& challenges, 
@@ -61,10 +53,7 @@ public:
     
     // Estrategia actual
     SolverStrategy getStrategy() const { return strategy; }
-    
-    // ===================================
-    // 🆕 HEATMAP (MATRIZ DISPERSA)
-    // ===================================
+
     const ExplorationHeatmap& getHeatmap() const { return heatmap; }
 
     // Estados para visualización
@@ -79,9 +68,6 @@ private:
     Coord finalGoal;
     SolverStrategy strategy;
     
-    // ===================================
-    // 🆕 HEATMAP (ESTRUCTURA 2/3)
-    // ===================================
     ExplorationHeatmap heatmap;
     
     // Lista ordenada de objetivos
@@ -105,14 +91,13 @@ private:
     };
     std::priority_queue<PQNode, std::vector<PQNode>, Compare> openPQ;
     int pushCounter = 0;
-    
-    // DFS específico
+ 
     std::vector<Coord> dfsStack;
     std::vector<std::vector<bool>> dfsVisited;
     
     Coord currentPos;
     std::vector<Coord> currentSegmentPath;
-    std::vector<Coord> fullPath;  // Legacy
+    std::vector<Coord> fullPath;
     
     std::vector<PathSegment> segments;
     PathSegment currentSegment;

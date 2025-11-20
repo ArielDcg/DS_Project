@@ -3,14 +3,12 @@
 
 ExplorationHeatmap::ExplorationHeatmap(int w, int h) 
     : width(w), height(h) {
-    // Reservar espacio para ~400 celdas (35% del grid)
+    // Reservar espacio para 400 celdas 
     visitCounts.reserve(500);
 }
 
 void ExplorationHeatmap::recordVisit(int x, int y) {
-    // ===================================
-    // INSERCIÓN EN MATRIZ DISPERSA: O(1)
-    // ===================================
+
     Coord key(x, y);
     visitCounts[key]++;
     
@@ -19,9 +17,7 @@ void ExplorationHeatmap::recordVisit(int x, int y) {
 }
 
 int ExplorationHeatmap::getVisitCount(int x, int y) const {
-    // ===================================
-    // BÚSQUEDA EN MATRIZ DISPERSA: O(1)
-    // ===================================
+
     Coord key(x, y);
     auto it = visitCounts.find(key);
     
@@ -37,11 +33,7 @@ int ExplorationHeatmap::getMaxVisits() const {
         cachedMaxVisits = 0;
         return 0;
     }
-    
-    // ===================================
-    // ITERACIÓN SOBRE MATRIZ DISPERSA
-    // Solo itera sobre celdas visitadas
-    // ===================================
+
     int maxV = 0;
     for (const auto& pair : visitCounts) {
         maxV = std::max(maxV, pair.second);
@@ -69,10 +61,6 @@ std::vector<std::vector<float>> ExplorationHeatmap::toNormalizedGrid() const {
     int maxV = getMaxVisits();
     if (maxV == 0) return grid;
     
-    // ===================================
-    // CONVERSIÓN SPARSE → DENSE
-    // Solo procesa celdas en el mapa
-    // ===================================
     for (const auto& pair : visitCounts) {
         const Coord& coord = pair.first;
         int visits = pair.second;

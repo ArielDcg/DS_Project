@@ -2,10 +2,6 @@
 #include <algorithm>
 #include <cmath>
 
-// ===================================
-// ALGORITHM STATS
-// ===================================
-
 float AlgorithmStats::calculateScore() const {
     // Score compuesto (mayor = mejor)
     // Penalizar nodos expandidos y longitud de camino
@@ -38,9 +34,6 @@ std::string AlgorithmStats::getKey() const {
     return algorithmName + "_" + generationAlgo;
 }
 
-// ===================================
-// CONSTRUCTOR Y DESTRUCTOR
-// ===================================
 
 AlgorithmRankingAVL::AlgorithmRankingAVL() 
     : root(nullptr), nodeCount(0) {}
@@ -62,9 +55,6 @@ void AlgorithmRankingAVL::clear() {
     nodeCount = 0;
 }
 
-// ===================================
-// FUNCIONES AUXILIARES
-// ===================================
 
 int AlgorithmRankingAVL::height(AVLNode* node) const {
     return node ? node->height : 0;
@@ -87,23 +77,10 @@ int AlgorithmRankingAVL::size() const {
 int AlgorithmRankingAVL::getHeight() const {
     return height(root);
 }
-// AlgorithmRankingAVL.cpp PARTE 2 - Rotaciones
 
-// ===================================
-// ROTACIONES AVL
-// ===================================
 
 AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateRight(AVLNode* y) {
-    /*
-    Rotación Simple Derecha (LL)
-    
-         y                    x
-        / \                  / \
-       x   C    --->        A   y
-      / \                      / \
-     A   B                    B   C
-    */
-    
+
     AVLNode* x = y->left;
     AVLNode* B = x->right;
     
@@ -119,16 +96,7 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateRight(AVLNode* y) {
 }
 
 AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateLeft(AVLNode* x) {
-    /*
-    Rotación Simple Izquierda (RR)
-    
-       x                      y
-      / \                    / \
-     A   y      --->        x   C
-        / \                / \
-       B   C              A   B
-    */
-    
+
     AVLNode* y = x->right;
     AVLNode* B = y->left;
     
@@ -144,42 +112,17 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateLeft(AVLNode* x) {
 }
 
 AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateLeftRight(AVLNode* node) {
-    /*
-    Rotación Doble Izquierda-Derecha (LR)
-    
-         z                z                  y
-        / \              / \                / \
-       x   D            y   D    --->      x   z
-      / \     --->     / \                / \ / \
-     A   y            x   C              A  B C  D
-        / \          / \
-       B   C        A   B
-    */
     
     node->left = rotateLeft(node->left);
     return rotateRight(node);
 }
 
 AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::rotateRightLeft(AVLNode* node) {
-    /*
-    Rotación Doble Derecha-Izquierda (RL)
-    
-       z                z                  y
-      / \              / \                / \
-     A   x            A   y    --->      z   x
-        / \     --->     / \            / \ / \
-       y   D            B   x          A  B C  D
-      / \                  / \
-     B   C                C   D
-    */
-    
+
     node->right = rotateRight(node->right);
     return rotateLeft(node);
 }
 
-// ===================================
-// BALANCEO AUTOMÁTICO
-// ===================================
 
 AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::balance(AVLNode* node) {
     if (!node) return nullptr;
@@ -209,12 +152,7 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::balance(AVLNode* node) {
     
     // Ya está balanceado
     return node;
-}
-// AlgorithmRankingAVL.cpp PARTE 3 - Inserción y búsqueda
 
-// ===================================
-// INSERCIÓN CON AUTO-BALANCEO
-// ===================================
 
 void AlgorithmRankingAVL::insert(const AlgorithmStats& stats) {
     root = insertNode(root, stats);
@@ -253,9 +191,6 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::insertNode(
     return balance(node);
 }
 
-// ===================================
-// BÚSQUEDA
-// ===================================
 
 bool AlgorithmRankingAVL::find(const std::string& key, AlgorithmStats& out) const {
     AVLNode* result = findNode(root, key);
@@ -285,9 +220,6 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::findNode(
     return findNode(node->right, key);
 }
 
-// ===================================
-// UPDATE (Delete + Insert)
-// ===================================
 
 void AlgorithmRankingAVL::update(const std::string& key, const AlgorithmStats& newStats) {
     // Buscar y eliminar viejo
@@ -347,11 +279,6 @@ AlgorithmRankingAVL::AVLNode* AlgorithmRankingAVL::findMin(AVLNode* node) const 
     }
     return node;
 }
-// AlgorithmRankingAVL.cpp PARTE 4 - Traversal y rankings
-
-// ===================================
-// TRAVERSAL Y RANKINGS
-// ===================================
 
 void AlgorithmRankingAVL::inorderTraversal(AVLNode* node, std::vector<AVLNode*>& result) const {
     if (!node) return;
@@ -390,10 +317,6 @@ std::vector<RankEntry> AlgorithmRankingAVL::getAll() const {
     
     return rankings;
 }
-
-// ===================================
-// VERIFICACIÓN DE BALANCE (DEBUG)
-// ===================================
 
 bool AlgorithmRankingAVL::isBalanced() const {
     return isBalancedHelper(root);

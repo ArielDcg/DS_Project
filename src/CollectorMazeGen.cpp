@@ -1,4 +1,3 @@
-// CollectorMazeGen.cpp
 // Algoritmos de generación modificados para modo coleccionista
 // - Empiezan desde centro
 // - Colocan tesoros al 33%, 66%, 90% de progreso
@@ -12,9 +11,6 @@
 #include <cstdlib>
 #include <ctime>
 
-// ===================================
-// 🎯 HELPER: Obtener esquina aleatoria
-// ===================================
 Coord getRandomCorner(const Grid& g, const Coord& avoid) {
     std::vector<Coord> corners = {
         Coord(0, 0),
@@ -35,9 +31,6 @@ Coord getRandomCorner(const Grid& g, const Coord& avoid) {
     return valid[std::rand() % valid.size()];
 }
 
-// ===================================
-// 🎯 DFS COLLECTOR ALGORITHM
-// ===================================
 struct DFSCollectorAlgorithm : public MazeAlgorithm {
     Grid &g;
     ChallengeSystem *challenges;
@@ -111,9 +104,6 @@ struct DFSCollectorAlgorithm : public MazeAlgorithm {
     }
 };
 
-// ===================================
-// 🎯 PRIM'S COLLECTOR ALGORITHM
-// ===================================
 struct PrimsCollectorAlgorithm : public MazeAlgorithm {
     Grid &g;
     ChallengeSystem *challenges;
@@ -205,9 +195,6 @@ struct PrimsCollectorAlgorithm : public MazeAlgorithm {
     }
 };
 
-// ===================================
-// 🎯 HUNT AND KILL COLLECTOR ALGORITHM
-// ===================================
 struct HuntAndKillCollectorAlgorithm : public MazeAlgorithm {
     Grid &g;
     ChallengeSystem *challenges;
@@ -321,9 +308,6 @@ struct HuntAndKillCollectorAlgorithm : public MazeAlgorithm {
     }
 };
 
-// ===================================
-// 🎯 KRUSKAL'S COLLECTOR ALGORITHM
-// ===================================
 struct KruskalsCollectorAlgorithm : public MazeAlgorithm {
     Grid &g;
     ChallengeSystem *challenges;

@@ -10,10 +10,6 @@ enum class SpecialElement {
     NONE
 };
 
-// ===================================
-// SISTEMA DE DESAFÍOS CON TABLA HASH
-// ESTRUCTURA 1 de 3 (✅ Implementada)
-// ===================================
 class ChallengeSystem {
 public:
     ChallengeSystem(Grid& grid);
@@ -45,14 +41,7 @@ public:
 private:
     Grid& g;
     
-    // ===================================
-    // TABLA HASH: Coord -> SpecialElement
-    // Búsqueda O(1) promedio
-    // Densidad: 0.27% (3/1120)
-    // Justificación: Búsqueda crítica en pathfinding
-    // ===================================
     std::unordered_map<Coord, SpecialElement, CoordHash> elements;
     
-    // Lista para iterar fácilmente
     std::vector<Coord> treasurePositions;
 };

@@ -41,12 +41,7 @@ public:
 private:
     int width, height;
     
-    // ===================================
-    // MATRIZ DISPERSA DOK
-    // Solo almacena celdas CON visitas
-    // Coord -> contador de visitas
-    // ===================================
     std::unordered_map<Coord, int, CoordHash> visitCounts;
     
-    mutable int cachedMaxVisits = -1; // Cache para optimización
+    mutable int cachedMaxVisits = -1; 
 };

@@ -343,8 +343,8 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
             } else {
                 if (!solverChosen) {
                     std::vector<std::string> solverOptions = {
-                        "DFS (stack)",
-                        "A* (Manhattan)",
+                        "DFS",
+                        "A*",
                         "Greedy Best-First",
                         "Uniform Cost Search"
                     };
@@ -576,10 +576,10 @@ int main() {
             
             // Menú 3: Estrategia
             std::vector<std::string> strategyOptions = {
-                "A* (g + h Manhattan)",
-                "Greedy (h only)",
-                "UCS (g only, Dijkstra)",
-                "DFS (stack)"
+                "A*",
+                "Greedy",
+                "UCS",
+                "DFS"
             };
             Menu strategyMenu(strategyOptions, "Choose Pathfinding Strategy");
             int stratChoice = strategyMenu.run(menuWindow);

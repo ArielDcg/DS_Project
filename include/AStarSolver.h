@@ -10,17 +10,15 @@ class AStarSolver {
 public:
     AStarSolver(Grid &grid, Coord start, Coord goal);
 
-    // one atomic expansion step (returns true when finished)
     bool step();
 
     bool finished() const;
     bool getCurrent(Coord &out) const;
     const std::vector<Coord> &getSolution() const;
 
-    // NEW: visualization helpers
     enum CellState { UNKNOWN = 0, OPEN = 1, CLOSED = 2 };
     const std::vector<std::vector<CellState>> &getStateGrid() const { return stateGrid; }
-    // gScores for heatmap; infinity if unreachable
+
     const std::vector<std::vector<float>> &getGScoreGrid() const { return gScore; }
 
 private:
