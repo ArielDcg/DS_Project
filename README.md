@@ -1,8 +1,40 @@
 # DS_Project
 ## Video de Resultados
 [Demostración](https://drive.google.com/file/d/1WFURZozSwdg8ouFHPSDQJrtCVzJ8VCXf/view?usp=sharing)
+
 ## Manual de Usuario
-Para realizar el setup, dirígase al manual [manual](docs/manualDeUsuario.md)
+Para realizar el setup completo, dirígase al [manual de usuario](docs/manualDeUsuario.md)
+
+### Compilación Rápida
+
+#### Usando los scripts incluidos (Recomendado):
+
+```bash
+# Compilar el proyecto
+./build.sh
+
+# Ejecutar el programa
+./run.sh
+```
+
+#### Compilación manual con CMake:
+
+```bash
+# Crear directorio de compilación
+mkdir -p build
+cd build
+
+# Configurar con CMake
+cmake ..
+
+# Compilar
+make
+
+# Ejecutar
+./maze_app
+```
+
+**Nota importante**: Todos los archivos generados por CMake se almacenan en el directorio `build/` para mantener el repositorio limpio. Nunca ejecutes CMake directamente en el directorio raíz o `src/`.
 
 ## Generación de Laberintos Perfectos - Documentación 
 
