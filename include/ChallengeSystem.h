@@ -22,12 +22,13 @@ enum class SpecialElement {
 
 // ===================================
 // SISTEMA DE DESAFÍOS CON TABLA HASH
+// ESTRUCTURA 1 de 3 (✅ Implementada)
 // ===================================
 class ChallengeSystem {
 public:
     ChallengeSystem(Grid& grid);
     
-    // Colocar tesoro en posición específica (para algoritmos de generación)
+    // Colocar tesoro en posición específica
     void placeTreasureAt(const Coord& pos);
     
     // Verificar si una coordenada tiene tesoro
@@ -54,8 +55,12 @@ public:
 private:
     Grid& g;
     
+    // ===================================
     // TABLA HASH: Coord -> SpecialElement
     // Búsqueda O(1) promedio
+    // Densidad: 0.27% (3/1120)
+    // Justificación: Búsqueda crítica en pathfinding
+    // ===================================
     std::unordered_map<Coord, SpecialElement, CoordHash> elements;
     
     // Lista para iterar fácilmente

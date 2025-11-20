@@ -1,27 +1,31 @@
 #include "CollectorSolver.h"
 #include <cmath>
 #include <algorithm>
+#include <random>
 
-CollectorSolver::CollectorSolver(Grid& grid, ChallengeSystem& chall, Coord s, Coord fg)
-    : g(grid), challenges(chall), start(s), finalGoal(fg),
+CollectorSolver::CollectorSolver(Grid& grid, ChallengeSystem& chall, Coord s, Coord fg, SolverStrategy strat)
+    : g(grid), challenges(chall), start(s), finalGoal(fg), strategy(strat),
       stateGrid(grid.width(), std::vector<CellState>(grid.height(), UNKNOWN)),
       closed(grid.width(), std::vector<bool>(grid.height(), false)),
       gScore(grid.width(), std::vector<float>(grid.height(), std::numeric_limits<float>::infinity())),
       fScore(grid.width(), std::vector<float>(grid.height(), std::numeric_limits<float>::infinity())),
       cameFrom(grid.width(), std::vector<Coord>(grid.height(), Coord(-1,-1))),
+      dfsVisited(grid.width(), std::vector<bool>(grid.height(), false)),
       currentPos(s) {
     
-    // ===================================
-    // 🎯 GREEDY MEJORADO CORREGIDO
-    // ===================================
-    // Ordenar tesoros de MÁS ALEJADO a MÁS CERCANO de la meta
-    // Así terminamos cerca de la meta al final
+    // Greedy mejorado: ordenar tesoros
     objectives = greedyOrderTreasures(start, challenges.getTreasurePositions(), finalGoal);
     objectives.push_back(finalGoal);
     
+    currentSegment.objectiveIndex = 0;
+    
     if (!objectives.empty()) {
         currentGoal = objectives[0];
-        initializeSearch(start, currentGoal);
+        if (strategy == SolverStrategy::DFS) {
+            initializeDFS(start, currentGoal);
+        } else {
+            initializeSearch(start, currentGoal);
+        }
     } else {
         allDone = true;
     }
@@ -31,6 +35,9 @@ float CollectorSolver::manhattan(const Coord& a, const Coord& b) const {
     return static_cast<float>(std::abs(a.x - b.x) + std::abs(a.y - b.y));
 }
 
+// ===================================
+// GREEDY MEJORADO (CORREGIDO)
+// ===================================
 std::vector<Coord> CollectorSolver::greedyOrderTreasures(
     Coord from, 
     const std::vector<Coord>& treasures, 
@@ -41,28 +48,22 @@ std::vector<Coord> CollectorSolver::greedyOrderTreasures(
     Coord current = from;
     
     while (!remaining.empty()) {
-        // ===================================
-        // 🔧 CORRECCIÓN: Buscar MÁXIMO no mínimo
-        // ===================================
-        float bestScore = -std::numeric_limits<float>::infinity();  // ← Empezar en -∞
+        // Buscar MÁXIMO (tesoro más alejado de meta)
+        float bestScore = -std::numeric_limits<float>::infinity();
         int bestIdx = 0;
         
-        // Para cada tesoro: calcular distancia total (actual→tesoro + tesoro→meta)
         for (size_t i = 0; i < remaining.size(); ++i) {
             float toTreasure = manhattan(current, remaining[i]);
             float treasureToGoal = manhattan(remaining[i], goal);
             float totalScore = toTreasure + treasureToGoal;
             
-            // ===================================
-            // ✅ BUSCAR MÁXIMO (tesoro más alejado)
-            // ===================================
-            if (totalScore > bestScore) {  // ← CORREGIDO: > en lugar de <
+            // ✅ Buscar MÁXIMO
+            if (totalScore > bestScore) {
                 bestScore = totalScore;
                 bestIdx = static_cast<int>(i);
             }
         }
         
-        // Agregar el tesoro MÁS ALEJADO y actualizar posición
         ordered.push_back(remaining[bestIdx]);
         current = remaining[bestIdx];
         remaining.erase(remaining.begin() + bestIdx);
@@ -72,21 +73,16 @@ std::vector<Coord> CollectorSolver::greedyOrderTreasures(
 }
 
 void CollectorSolver::initializeSearch(Coord from, Coord to) {
-    // ===================================
-    // 🧹 LIMPIEZA COMPLETA (Opción A)
-    // ===================================
-    // Resetear TODAS las estructuras entre objetivos
+    // Limpieza completa
     closed.assign(g.width(), std::vector<bool>(g.height(), false));
     gScore.assign(g.width(), std::vector<float>(g.height(), std::numeric_limits<float>::infinity()));
     fScore.assign(g.width(), std::vector<float>(g.height(), std::numeric_limits<float>::infinity()));
     cameFrom.assign(g.width(), std::vector<Coord>(g.height(), Coord(-1,-1)));
     stateGrid.assign(g.width(), std::vector<CellState>(g.height(), UNKNOWN));
     
-    // Limpiar priority queue
     while (!openPQ.empty()) openPQ.pop();
     pushCounter = 0;
     
-    // Inicializar A* desde posición actual
     currentPos = from;
     currentGoal = to;
     gScore[from.x][from.y] = 0.0f;
@@ -98,15 +94,63 @@ void CollectorSolver::initializeSearch(Coord from, Coord to) {
     currentSegmentPath.clear();
 }
 
+void CollectorSolver::initializeDFS(Coord from, Coord to) {
+    dfsVisited.assign(g.width(), std::vector<bool>(g.height(), false));
+    stateGrid.assign(g.width(), std::vector<CellState>(g.height(), UNKNOWN));
+    
+    dfsStack.clear();
+    dfsStack.push_back(from);
+    dfsVisited[from.x][from.y] = true;
+    stateGrid[from.x][from.y] = OPEN;
+    
+    currentPos = from;
+    currentGoal = to;
+    segmentDone = false;
+    currentSegmentPath.clear();
+}
+
 float CollectorSolver::heuristic(int x, int y, const Coord& goal) const {
-    // Manhattan distance (admisible para grid 4-direccional)
     return static_cast<float>(std::abs(goal.x - x) + std::abs(goal.y - y));
 }
+
+// ===================================
+// 🆕 RECOLECCIÓN OPORTUNISTA
+// ===================================
+void CollectorSolver::checkOpportunisticCollection() {
+    if (challenges.hasTreasure(currentPos)) {
+        // ¿Es un tesoro que NO es mi objetivo actual?
+        if (!(currentPos.x == currentGoal.x && currentPos.y == currentGoal.y)) {
+            // ¡Tesoro de paso encontrado!
+            challenges.collectTreasure(currentPos);
+            stateGrid[currentPos.x][currentPos.y] = TREASURE_COLLECTED;
+            
+            // Marcar en el segmento actual
+            currentSegment.foundBonus = true;
+            currentSegment.bonusTreasure = currentPos;
+            
+            // Remover de objetivos futuros
+            removeFromObjectives(currentPos);
+        }
+    }
+}
+
+void CollectorSolver::removeFromObjectives(const Coord& pos) {
+    for (size_t i = currentObjectiveIndex + 1; i < objectives.size(); ++i) {
+        if (objectives[i].x == pos.x && objectives[i].y == pos.y) {
+            objectives.erase(objectives.begin() + i);
+            break;
+        }
+    }
+}
+// CollectorSolver.cpp PARTE 2 - Continúa de part1
 
 bool CollectorSolver::step() {
     if (allDone) return true;
     
     if (segmentDone) {
+        // Guardar segmento completado
+        segments.push_back(currentSegment);
+        
         // Pasar al siguiente objetivo
         currentObjectiveIndex++;
         
@@ -115,21 +159,45 @@ bool CollectorSolver::step() {
             return true;
         }
         
+        // Preparar nuevo segmento
+        currentSegment = PathSegment();
+        currentSegment.objectiveIndex = currentObjectiveIndex;
+        
         Coord nextGoal = objectives[currentObjectiveIndex];
-        initializeSearch(currentPos, nextGoal);
+        if (strategy == SolverStrategy::DFS) {
+            initializeDFS(currentPos, nextGoal);
+        } else {
+            initializeSearch(currentPos, nextGoal);
+        }
         return false;
     }
     
-    return stepAStar();
+    // ===================================
+    // DISPATCHER DE ESTRATEGIA
+    // ===================================
+    switch (strategy) {
+        case SolverStrategy::ASTAR:
+            return stepAStar();
+        case SolverStrategy::GREEDY:
+            return stepGreedy();
+        case SolverStrategy::UCS:
+            return stepUCS();
+        case SolverStrategy::DFS:
+            return stepDFS();
+    }
+    
+    return false;
 }
 
+// ===================================
+// A* ALGORITHM
+// ===================================
 bool CollectorSolver::stepAStar() {
     if (openPQ.empty()) {
         segmentDone = true;
         return false;
     }
     
-    // Pop mejor nodo, saltar obsoletos
     PQNode node;
     do {
         if (openPQ.empty()) {
@@ -143,15 +211,18 @@ bool CollectorSolver::stepAStar() {
     int cx = node.x, cy = node.y;
     currentPos = Coord(cx, cy);
     
-    // Marcar como cerrado
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
+    
+    // ===================================
+    // 🆕 DETECCIÓN OPORTUNISTA
+    // ===================================
+    checkOpportunisticCollection();
     
     // ¿Llegamos al objetivo?
     if (cx == currentGoal.x && cy == currentGoal.y) {
         reconstructSegment();
         
-        // Recolectar tesoro si hay uno
         if (challenges.hasTreasure(currentGoal)) {
             challenges.collectTreasure(currentGoal);
             stateGrid[cx][cy] = TREASURE_COLLECTED;
@@ -161,15 +232,15 @@ bool CollectorSolver::stepAStar() {
         return false;
     }
     
-    // Expandir vecinos (4 direcciones)
+    // Expandir vecinos
     for (int dir = 0; dir < 4; ++dir) {
         if (g.at(cx, cy).walls[dir]) continue;
         
         int nx = cx, ny = cy;
-        if (dir == 0) ny -= 1;      // Up
-        else if (dir == 1) nx -= 1;  // Left
-        else if (dir == 2) nx += 1;  // Right
-        else if (dir == 3) ny += 1;  // Down
+        if (dir == 0) ny -= 1;
+        else if (dir == 1) nx -= 1;
+        else if (dir == 2) nx += 1;
+        else if (dir == 3) ny += 1;
         
         if (nx < 0 || ny < 0 || nx >= g.width() || ny >= g.height()) continue;
         if (closed[nx][ny]) continue;
@@ -180,9 +251,219 @@ bool CollectorSolver::stepAStar() {
             cameFrom[nx][ny] = Coord(cx, cy);
             gScore[nx][ny] = tentative_g;
             fScore[nx][ny] = tentative_g + heuristic(nx, ny, currentGoal);
-            openPQ.push({fScore[nx][ny], pushCounter++, nx, ny});
-            stateGrid[nx][ny] = OPEN;
+            
+            // ✅ Solo agregar si es nuevo (no está en OPEN ni CLOSED)
+            if (stateGrid[nx][ny] == UNKNOWN) {
+                openPQ.push({fScore[nx][ny], pushCounter++, nx, ny});
+                stateGrid[nx][ny] = OPEN;
+            }
+            // Si ya está OPEN: scores actualizados, pero nodo ya en cola
+            // La próxima vez que se procese usará los nuevos scores
         }
+    }
+    
+    return false;
+}
+
+// ===================================
+// GREEDY BEST-FIRST
+// ===================================
+bool CollectorSolver::stepGreedy() {
+    if (openPQ.empty()) {
+        segmentDone = true;
+        return false;
+    }
+    
+    PQNode node;
+    do {
+        if (openPQ.empty()) {
+            segmentDone = true;
+            return false;
+        }
+        node = openPQ.top();
+        openPQ.pop();
+    } while (closed[node.x][node.y]);
+    
+    int cx = node.x, cy = node.y;
+    currentPos = Coord(cx, cy);
+    
+    closed[cx][cy] = true;
+    stateGrid[cx][cy] = CLOSED;
+    
+    checkOpportunisticCollection();
+    
+    if (cx == currentGoal.x && cy == currentGoal.y) {
+        reconstructSegment();
+        
+        if (challenges.hasTreasure(currentGoal)) {
+            challenges.collectTreasure(currentGoal);
+            stateGrid[cx][cy] = TREASURE_COLLECTED;
+        }
+        
+        segmentDone = true;
+        return false;
+    }
+    
+    for (int dir = 0; dir < 4; ++dir) {
+        if (g.at(cx, cy).walls[dir]) continue;
+        
+        int nx = cx, ny = cy;
+        if (dir == 0) ny -= 1;
+        else if (dir == 1) nx -= 1;
+        else if (dir == 2) nx += 1;
+        else if (dir == 3) ny += 1;
+        
+        if (nx < 0 || ny < 0 || nx >= g.width() || ny >= g.height()) continue;
+        if (closed[nx][ny]) continue;
+        
+        float tentative_g = gScore[cx][cy] + 1.0f;
+        
+        if (tentative_g < gScore[nx][ny]) {
+            cameFrom[nx][ny] = Coord(cx, cy);
+            gScore[nx][ny] = tentative_g;
+            fScore[nx][ny] = heuristic(nx, ny, currentGoal);
+            
+            // ✅ Solo agregar si es nuevo
+            if (stateGrid[nx][ny] == UNKNOWN) {
+                openPQ.push({fScore[nx][ny], pushCounter++, nx, ny});
+                stateGrid[nx][ny] = OPEN;
+            }
+        }
+    }
+    
+    return false;
+}
+
+// ===================================
+// UNIFORM COST SEARCH (Dijkstra)
+// ===================================
+bool CollectorSolver::stepUCS() {
+    if (openPQ.empty()) {
+        segmentDone = true;
+        return false;
+    }
+    
+    PQNode node;
+    do {
+        if (openPQ.empty()) {
+            segmentDone = true;
+            return false;
+        }
+        node = openPQ.top();
+        openPQ.pop();
+    } while (closed[node.x][node.y]);
+    
+    int cx = node.x, cy = node.y;
+    currentPos = Coord(cx, cy);
+    
+    closed[cx][cy] = true;
+    stateGrid[cx][cy] = CLOSED;
+    
+    checkOpportunisticCollection();
+    
+    if (cx == currentGoal.x && cy == currentGoal.y) {
+        reconstructSegment();
+        
+        if (challenges.hasTreasure(currentGoal)) {
+            challenges.collectTreasure(currentGoal);
+            stateGrid[cx][cy] = TREASURE_COLLECTED;
+        }
+        
+        segmentDone = true;
+        return false;
+    }
+    
+    for (int dir = 0; dir < 4; ++dir) {
+        if (g.at(cx, cy).walls[dir]) continue;
+        
+        int nx = cx, ny = cy;
+        if (dir == 0) ny -= 1;
+        else if (dir == 1) nx -= 1;
+        else if (dir == 2) nx += 1;
+        else if (dir == 3) ny += 1;
+        
+        if (nx < 0 || ny < 0 || nx >= g.width() || ny >= g.height()) continue;
+        if (closed[nx][ny]) continue;
+        
+        float tentative_g = gScore[cx][cy] + 1.0f;
+        
+        if (tentative_g < gScore[nx][ny]) {
+            cameFrom[nx][ny] = Coord(cx, cy);
+            gScore[nx][ny] = tentative_g;
+            fScore[nx][ny] = tentative_g;
+            
+            // ✅ Solo agregar si es nuevo
+            if (stateGrid[nx][ny] == UNKNOWN) {
+                openPQ.push({fScore[nx][ny], pushCounter++, nx, ny});
+                stateGrid[nx][ny] = OPEN;
+            }
+        }
+    }
+    
+    return false;
+}
+// CollectorSolver.cpp PARTE 3 - Continúa de part2
+
+// ===================================
+// DEPTH-FIRST SEARCH
+// ===================================
+bool CollectorSolver::stepDFS() {
+    if (dfsStack.empty()) {
+        segmentDone = true;
+        return false;
+    }
+    
+    Coord cur = dfsStack.back();
+    dfsStack.pop_back();
+    
+    int cx = cur.x, cy = cur.y;
+    currentPos = cur;
+    stateGrid[cx][cy] = CLOSED;
+    
+    checkOpportunisticCollection();
+    
+    // ¿Llegamos al objetivo?
+    if (cx == currentGoal.x && cy == currentGoal.y) {
+        // DFS no usa cameFrom, construir camino desde stack
+        currentSegmentPath.clear();
+        currentSegmentPath.push_back(currentGoal);
+        
+        // Agregar al fullPath
+        fullPath.push_back(currentGoal);
+        
+        // Guardar en segmento
+        currentSegment.path = currentSegmentPath;
+        
+        if (challenges.hasTreasure(currentGoal)) {
+            challenges.collectTreasure(currentGoal);
+            stateGrid[cx][cy] = TREASURE_COLLECTED;
+        }
+        
+        segmentDone = true;
+        return false;
+    }
+    
+    // Expandir vecinos en orden aleatorio (característica DFS)
+    std::vector<int> dirs = {0, 1, 2, 3};
+    static std::random_device rd;
+    static std::mt19937 rng(rd());
+    std::shuffle(dirs.begin(), dirs.end(), rng);
+    
+    for (int dir : dirs) {
+        if (g.at(cx, cy).walls[dir]) continue;
+        
+        int nx = cx, ny = cy;
+        if (dir == 0) ny -= 1;
+        else if (dir == 1) nx -= 1;
+        else if (dir == 2) nx += 1;
+        else if (dir == 3) ny += 1;
+        
+        if (nx < 0 || ny < 0 || nx >= g.width() || ny >= g.height()) continue;
+        if (dfsVisited[nx][ny]) continue;
+        
+        dfsVisited[nx][ny] = true;
+        dfsStack.push_back(Coord(nx, ny));
+        stateGrid[nx][ny] = OPEN;
     }
     
     return false;
@@ -192,7 +473,6 @@ void CollectorSolver::reconstructSegment() {
     currentSegmentPath.clear();
     Coord cur = currentGoal;
     
-    // Retroceder desde meta hasta inicio usando cameFrom
     while (!(cur.x == -1 && cur.y == -1)) {
         currentSegmentPath.push_back(cur);
         cur = cameFrom[cur.x][cur.y];
@@ -200,7 +480,10 @@ void CollectorSolver::reconstructSegment() {
     
     std::reverse(currentSegmentPath.begin(), currentSegmentPath.end());
     
-    // Agregar al camino completo (evitar duplicar inicio del segmento)
+    // Guardar en segmento actual
+    currentSegment.path = currentSegmentPath;
+    
+    // Agregar al fullPath (legacy, mantener compatibilidad)
     for (size_t i = (fullPath.empty() ? 0 : 1); i < currentSegmentPath.size(); ++i) {
         fullPath.push_back(currentSegmentPath[i]);
     }
@@ -218,6 +501,10 @@ bool CollectorSolver::getCurrent(Coord& out) const {
 
 const std::vector<Coord>& CollectorSolver::getFullPath() const {
     return fullPath;
+}
+
+const std::vector<PathSegment>& CollectorSolver::getSegments() const {
+    return segments;
 }
 
 int CollectorSolver::getTreasuresCollected() const {

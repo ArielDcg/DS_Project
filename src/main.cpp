@@ -1,4 +1,4 @@
-// src/main.cpp - COMPLETO CON MODO COLECCIONISTA
+// main.cpp - MODO COLECCIONISTA COMPLETO CON LOOP CONTINUO
 #include <SFML/Graphics.hpp>
 #include "Grid.h"
 #include "MazeAlgorithm.h"
@@ -10,13 +10,10 @@
 #include "ChallengeSystem.h"
 #include "CollectorSolver.h"
 
-// Algoritmos originales
 #include "DFSAlgorithm.cpp"
 #include "PrimsAlgorithm.cpp"
 #include "HuntAndKillAlgorithm.cpp"
 #include "KruskalsAlgorithm.cpp"
-
-// Algoritmos modificados para modo coleccionista
 #include "CollectorMazeGen.cpp"
 
 #include <memory>
@@ -27,9 +24,15 @@
 #include <limits>
 #include <algorithm>
 
-// ===================================
-// HELPERS
-// ===================================
+std::string getStrategyName(SolverStrategy strategy) {
+    switch (strategy) {
+        case SolverStrategy::ASTAR: return "A*";
+        case SolverStrategy::GREEDY: return "Greedy";
+        case SolverStrategy::UCS: return "UCS";
+        case SolverStrategy::DFS: return "DFS";
+        default: return "Unknown";
+    }
+}
 
 struct ObjectiveColors {
     sf::Color closed;
@@ -38,49 +41,38 @@ struct ObjectiveColors {
 
 ObjectiveColors getColorsForObjective(int objectiveIndex) {
     ObjectiveColors colors;
-    
     switch (objectiveIndex) {
-        case 0: // Inicio → Tesoro 1
-            colors.closed = sf::Color(120, 80, 160, 120);  // Morado
-            colors.path = sf::Color(20, 160, 255, 200);     // Azul
+        case 0:
+            colors.closed = sf::Color(120, 80, 160, 120);
+            colors.path = sf::Color(20, 160, 255, 200);
             break;
-        case 1: // Tesoro 1 → Tesoro 2
-            colors.closed = sf::Color(217, 121, 64, 120);   // Naranja
-            colors.path = sf::Color(64, 217, 96, 200);      // Verde
+        case 1:
+            colors.closed = sf::Color(217, 121, 64, 120);
+            colors.path = sf::Color(64, 217, 96, 200);
             break;
-        case 2: // Tesoro 2 → Tesoro 3
-            colors.closed = sf::Color(64, 192, 217, 120);   // Cian
-            colors.path = sf::Color(255, 215, 0, 200);      // Amarillo dorado
+        case 2:
+            colors.closed = sf::Color(64, 192, 217, 120);
+            colors.path = sf::Color(255, 215, 0, 200);
             break;
-        case 3: // Tesoro 3 → Meta
-            colors.closed = sf::Color(217, 64, 217, 120);   // Magenta
-            colors.path = sf::Color(255, 64, 64, 200);      // Rojo
+        case 3:
+            colors.closed = sf::Color(217, 64, 217, 120);
+            colors.path = sf::Color(255, 64, 64, 200);
             break;
         default:
             colors.closed = sf::Color(120, 80, 160, 120);
             colors.path = sf::Color(20, 160, 255, 200);
             break;
     }
-    
     return colors;
 }
 
-// ===================================
-// MODO COLECCIONISTA
-// ===================================
-void runCollectorMode(
-    Grid &grid, 
-    MazeAlgorithm &algo, 
-    ChallengeSystem &challenges,
-    Coord start,
-    Coord goal,
-    int cellSize, 
-    const std::string &title, 
-    const sf::Font *fontPtr = nullptr
-) {
+void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challenges,
+                      Coord start, Coord goal, int cellSize, const std::string &title,
+                      SolverStrategy strategy, const sf::Font *fontPtr = nullptr) {
     unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
     unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
-    sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), title + " - COLLECTOR MODE");
+    sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), 
+                           title + " - COLLECTOR [" + getStrategyName(strategy) + "]");
     window.setFramerateLimit(60);
 
     sf::Clock clock;
@@ -102,7 +94,10 @@ void runCollectorMode(
     while (window.isOpen()) {
         while (auto evOpt = window.pollEvent()) {
             const sf::Event &ev = *evOpt;
-            if (ev.is<sf::Event::Closed>()) { window.close(); break; }
+            if (ev.is<sf::Event::Closed>()) { 
+                window.close(); 
+                return;  // Volver al menú
+            }
         }
 
         accumulator += clock.restart();
@@ -110,7 +105,7 @@ void runCollectorMode(
             if (!algo.finished()) {
                 algo.step();
             } else if (!solverInitialized) {
-                solver = std::make_unique<CollectorSolver>(grid, challenges, start, goal);
+                solver = std::make_unique<CollectorSolver>(grid, challenges, start, goal, strategy);
                 solverInitialized = true;
             } else if (!solver->finished()) {
                 solver->step();
@@ -118,10 +113,9 @@ void runCollectorMode(
             accumulator -= stepTime;
         }
 
-        // RENDER
         window.clear(sf::Color::Black);
 
-        // Grid base
+        // Grid
         for (int y = 0; y < grid.height(); ++y) {
             for (int x = 0; x < grid.width(); ++x) {
                 float xpos = x * cellSize;
@@ -145,7 +139,6 @@ void runCollectorMode(
         const std::vector<Coord>& treasures = challenges.getTreasurePositions();
         for (const Coord& t : treasures) {
             if (challenges.hasTreasure(t)) {
-                // Tesoro no recolectado
                 sf::CircleShape circle(cellSize * 0.35f);
                 circle.setPosition(sf::Vector2f(t.x * cellSize + cellSize * 0.15f, t.y * cellSize + cellSize * 0.15f));
                 circle.setFillColor(sf::Color(255, 215, 0, 220));
@@ -158,7 +151,6 @@ void runCollectorMode(
                 innerSquare.setFillColor(sf::Color(255, 255, 0, 255));
                 window.draw(innerSquare);
             } else {
-                // Tesoro recolectado
                 sf::RectangleShape marker(sf::Vector2f((float)cellSize, (float)cellSize));
                 marker.setPosition(sf::Vector2f((float)t.x * cellSize, (float)t.y * cellSize));
                 marker.setFillColor(sf::Color(100, 255, 100, 80));
@@ -166,19 +158,18 @@ void runCollectorMode(
             }
         }
 
-        // Inicio
+        // Inicio y Meta
         sf::CircleShape startMarker(cellSize * 0.4f);
         startMarker.setPosition(sf::Vector2f(start.x * cellSize + cellSize * 0.1f, start.y * cellSize + cellSize * 0.1f));
         startMarker.setFillColor(sf::Color(0, 255, 0, 150));
         window.draw(startMarker);
 
-        // Meta
         sf::CircleShape goalMarker(cellSize * 0.4f);
         goalMarker.setPosition(sf::Vector2f(goal.x * cellSize + cellSize * 0.1f, goal.y * cellSize + cellSize * 0.1f));
         goalMarker.setFillColor(sf::Color(255, 0, 0, 150));
         window.draw(goalMarker);
 
-        // Generación actual
+        // Generación
         Coord genCur;
         if (!algo.finished() && algo.getCurrent(genCur)) {
             sf::RectangleShape curRect(sf::Vector2f((float)cellSize, (float)cellSize));
@@ -187,7 +178,7 @@ void runCollectorMode(
             window.draw(curRect);
         }
 
-        // Visualización del solver
+        // Solver
         if (solverInitialized && solver) {
             const auto& states = solver->getStateGrid();
             const auto& gGrid = solver->getGScoreGrid();
@@ -241,18 +232,32 @@ void runCollectorMode(
                 window.draw(s);
             }
 
-            const std::vector<Coord>& path = solver->getFullPath();
-            if (!path.empty()) {
-                for (const Coord& c : path) {
+            // SEGMENTOS CON COLORES PERSISTENTES
+            const std::vector<PathSegment>& segments = solver->getSegments();
+            for (const PathSegment& seg : segments) {
+                ObjectiveColors segColors = getColorsForObjective(seg.objectiveIndex);
+                
+                for (const Coord& c : seg.path) {
                     sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
                     rect.setPosition(sf::Vector2f((float)c.x * cellSize, (float)c.y * cellSize));
-                    rect.setFillColor(colors.path);
+                    rect.setFillColor(segColors.path);
                     window.draw(rect);
                 }
                 
-                for (size_t i = 1; i < path.size(); ++i) {
-                    const Coord& a = path[i-1];
-                    const Coord& b = path[i];
+                // Tesoro bonus (verde brillante)
+                if (seg.foundBonus) {
+                    sf::CircleShape bonus(cellSize * 0.4f);
+                    bonus.setPosition(sf::Vector2f(seg.bonusTreasure.x * cellSize + cellSize * 0.1f, 
+                                                    seg.bonusTreasure.y * cellSize + cellSize * 0.1f));
+                    bonus.setFillColor(sf::Color(0, 255, 0, 200));
+                    bonus.setOutlineThickness(3.0f);
+                    bonus.setOutlineColor(sf::Color(255, 255, 255));
+                    window.draw(bonus);
+                }
+                
+                for (size_t i = 1; i < seg.path.size(); ++i) {
+                    const Coord& a = seg.path[i-1];
+                    const Coord& b = seg.path[i];
                     float ax = a.x * cellSize + cellSize * 0.5f;
                     float ay = a.y * cellSize + cellSize * 0.5f;
                     float bx = b.x * cellSize + cellSize * 0.5f;
@@ -264,15 +269,15 @@ void runCollectorMode(
 
         // Overlay
         if (fontPtr) {
-            sf::Text titleText(*fontPtr, title + " - COLLECTOR", 18);
+            sf::Text titleText(*fontPtr, title + " - " + getStrategyName(strategy), 16);
             titleText.setPosition(sf::Vector2f(6.f, 6.f));
             titleText.setFillColor(sf::Color(235,235,235,230));
             window.draw(titleText);
 
             if (solverInitialized) {
                 std::string treasureText = "Treasures: " + std::to_string(solver->getTreasuresCollected()) + "/3";
-                sf::Text tText(*fontPtr, treasureText, 16);
-                tText.setPosition(sf::Vector2f(6.f, 30.f));
+                sf::Text tText(*fontPtr, treasureText, 14);
+                tText.setPosition(sf::Vector2f(6.f, 26.f));
                 tText.setFillColor(sf::Color(255, 215, 0));
                 window.draw(tText);
                 
@@ -280,8 +285,8 @@ void runCollectorMode(
                 std::string objText = "Objective: ";
                 if (objIdx < 3) objText += "Treasure " + std::to_string(objIdx + 1);
                 else objText += "GOAL";
-                sf::Text oText(*fontPtr, objText, 14);
-                oText.setPosition(sf::Vector2f(6.f, 50.f));
+                sf::Text oText(*fontPtr, objText, 12);
+                oText.setPosition(sf::Vector2f(6.f, 44.f));
                 oText.setFillColor(sf::Color(200, 200, 200));
                 window.draw(oText);
             }
@@ -291,9 +296,6 @@ void runCollectorMode(
     }
 }
 
-// ===================================
-// MODO CLÁSICO (sin cambios)
-// ===================================
 void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::string &title, const sf::Font *fontPtr = nullptr) {
     unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
     unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
@@ -328,7 +330,10 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
     while (window.isOpen()) {
         while (auto evOpt = window.pollEvent()) {
             const sf::Event &ev = *evOpt;
-            if (ev.is<sf::Event::Closed>()) { window.close(); break; }
+            if (ev.is<sf::Event::Closed>()) { 
+                window.close(); 
+                return;  // Volver al menú
+            }
         }
 
         accumulator += clock.restart();
@@ -338,12 +343,12 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
             } else {
                 if (!solverChosen) {
                     std::vector<std::string> solverOptions = {
-                        "DFS (stack) - uses your MazeSolver",
-                        "A* (Manhattan) - incremental A*",
-                        "Greedy Best-First (heuristic)",
-                        "Uniform Cost Search (UCS)"
+                        "DFS (stack)",
+                        "A* (Manhattan)",
+                        "Greedy Best-First",
+                        "Uniform Cost Search"
                     };
-                    Menu solverMenu(solverOptions, "Choose Solver Algorithm");
+                    Menu solverMenu(solverOptions, "Choose Solver");
                     int solverChoice = solverMenu.run(window);
                     if (solverChoice < 0) { window.close(); return; }
 
@@ -359,9 +364,6 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
                     } else if (solverChoice == 3) {
                         ucsSolver = std::make_unique<UCSSolver>(grid, start, goal);
                         solverType = SOLVER_UCS;
-                    } else {
-                        dfsSolver = std::make_unique<MazeSolver>(grid, start, goal);
-                        solverType = SOLVER_DFS;
                     }
 
                     solverChosen = true;
@@ -494,145 +496,133 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
             titleText.setPosition(sf::Vector2f(6.f, 6.f));
             titleText.setFillColor(sf::Color(235,235,235,230));
             window.draw(titleText);
-
-            float lx = 8.f, ly = 30.f, lh = 14.f;
-            sf::RectangleShape legendClosed(sf::Vector2f(18, lh));
-            legendClosed.setPosition(sf::Vector2f(lx, ly));
-            legendClosed.setFillColor(sf::Color(120,80,160,120));
-            window.draw(legendClosed);
-            sf::Text closedText(*fontPtr, "closed", 12);
-            closedText.setPosition(sf::Vector2f(lx + 22.f, ly - 2.f));
-            closedText.setFillColor(sf::Color(200,200,200,200));
-            window.draw(closedText);
-
-            sf::RectangleShape legendOpen(sf::Vector2f(18, lh));
-            legendOpen.setPosition(sf::Vector2f(lx, ly + 18.f));
-            legendOpen.setFillColor(sf::Color(200,160,80,120));
-            window.draw(legendOpen);
-            sf::Text openText(*fontPtr, "open (heat)", 12);
-            openText.setPosition(sf::Vector2f(lx + 22.f, ly + 16.f));
-            openText.setFillColor(sf::Color(200,200,200,200));
-            window.draw(openText);
-
-            sf::RectangleShape legendPath(sf::Vector2f(18, lh));
-            legendPath.setPosition(sf::Vector2f(lx, ly + 36.f));
-            legendPath.setFillColor(sf::Color(20,160,255,200));
-            window.draw(legendPath);
-            sf::Text pathText(*fontPtr, "path", 12);
-            pathText.setPosition(sf::Vector2f(lx + 22.f, ly + 34.f));
-            pathText.setFillColor(sf::Color(200,200,200,200));
-            window.draw(pathText);
         }
 
         window.display();
     }
 }
 
-// ===================================
-// MAIN
-// ===================================
 int main() {
     const int GRID_W = 40;
     const int GRID_H = 28;
     const int CELL_SIZE = 20;
 
-    sf::RenderWindow menuWindow(sf::VideoMode(sf::Vector2u(800, 600)), "Maze - Select Mode");
+    sf::RenderWindow menuWindow(sf::VideoMode(sf::Vector2u(800, 600)), "Maze - Main Menu");
     menuWindow.setFramerateLimit(60);
 
-    // MENÚ 1: Modo de juego
-    std::vector<std::string> modeOptions = {
-        "Classic Mode",
-        "Collector Mode (3 Treasures)"
-    };
-    Menu modeMenu(modeOptions, "Select Game Mode");
-    int modeChoice = modeMenu.run(menuWindow);
-    if (modeChoice < 0) return 0;
-
-    bool isCollectorMode = (modeChoice == 1);
-
-    // MENÚ 2: Algoritmo de generación
     Menu menu;
-    int choice = menu.run(menuWindow);
-    if (choice < 0) return 0;
-
-    Grid grid(GRID_W, GRID_H);
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
-
-    // Sistema de tesoros
-    std::unique_ptr<ChallengeSystem> challenges;
-    if (isCollectorMode) {
-        challenges = std::make_unique<ChallengeSystem>(grid);
-    }
-
-    std::unique_ptr<MazeAlgorithm> algo;
-    std::string title;
-
-    // Coordenadas según modo
-    Coord start, goal;
-    if (isCollectorMode) {
-        start = Coord(GRID_W / 2, GRID_H / 2);
-        goal = getRandomCorner(grid, start);
-    } else {
-        start = Coord(0, 0);
-        goal = Coord(GRID_W - 1, GRID_H - 1);
-    }
-
-    // Crear algoritmo
-    if (isCollectorMode) {
-        switch (choice) {
-            case 0:
-                algo.reset(new DFSCollectorAlgorithm(grid, challenges.get()));
-                title = "DFS (Recursive Backtracker)";
-                break;
-            case 1:
-                algo.reset(new PrimsCollectorAlgorithm(grid, challenges.get()));
-                title = "Prim's (incremental)";
-                break;
-            case 2:
-                algo.reset(new HuntAndKillCollectorAlgorithm(grid, challenges.get()));
-                title = "Hunt and Kill Algorithm";
-                break;
-            case 3:
-                algo.reset(new KruskalsCollectorAlgorithm(grid, challenges.get()));
-                title = "Kruskal's Algorithm";
-                break;
-            default:
-                algo.reset(new DFSCollectorAlgorithm(grid, challenges.get()));
-                title = "Fallback: DFS";
-                break;
-        }
-    } else {
-        switch (choice) {
-            case 0:
-                algo.reset(new DFSAlgorithm(grid));
-                title = "DFS (Recursive Backtracker)";
-                break;
-            case 1:
-                algo.reset(new PrimsAlgorithm(grid));
-                title = "Prim's (incremental)";
-                break;
-            case 2:
-                algo.reset(new HuntAndKillAlgorithm(grid));
-                title = "Hunt and Kill Algorithm";
-                break;
-            case 3:
-                algo.reset(new KruskalsAlgorithm(grid));
-                title = "Kruskal's Algorithm";
-                break;
-            default:
-                algo.reset(new DFSAlgorithm(grid));
-                title = "Fallback: DFS";
-                break;
-        }
-    }
-
     const sf::Font *fontPtr = menu.isFontLoaded() ? &menu.getFont() : nullptr;
 
-    // Ejecutar
-    if (isCollectorMode) {
-        runCollectorMode(grid, *algo, *challenges, start, goal, CELL_SIZE, title, fontPtr);
-    } else {
-        runAlgorithm(grid, *algo, CELL_SIZE, title, fontPtr);
+    // LOOP INFINITO
+    while (menuWindow.isOpen()) {
+        // Menú 1: Modo
+        std::vector<std::string> modeOptions = {
+            "Classic Mode",
+            "Collector Mode (3 Treasures)"
+        };
+        Menu modeMenu(modeOptions, "Select Game Mode");
+        int modeChoice = modeMenu.run(menuWindow);
+        if (modeChoice < 0) break;
+
+        bool isCollectorMode = (modeChoice == 1);
+
+        // Menú 2: Algoritmo generación
+        int choice = menu.run(menuWindow);
+        if (choice < 0) continue;
+
+        Grid grid(GRID_W, GRID_H);
+        std::srand(static_cast<unsigned>(std::time(nullptr)));
+
+        std::unique_ptr<ChallengeSystem> challenges;
+        if (isCollectorMode) {
+            challenges = std::make_unique<ChallengeSystem>(grid);
+        }
+
+        std::unique_ptr<MazeAlgorithm> algo;
+        std::string title;
+
+        Coord start, goal;
+        if (isCollectorMode) {
+            start = Coord(GRID_W / 2, GRID_H / 2);
+            goal = getRandomCorner(grid, start);
+        } else {
+            start = Coord(0, 0);
+            goal = Coord(GRID_W - 1, GRID_H - 1);
+        }
+
+        if (isCollectorMode) {
+            switch (choice) {
+                case 0:
+                    algo.reset(new DFSCollectorAlgorithm(grid, challenges.get()));
+                    title = "DFS";
+                    break;
+                case 1:
+                    algo.reset(new PrimsCollectorAlgorithm(grid, challenges.get()));
+                    title = "Prim's";
+                    break;
+                case 2:
+                    algo.reset(new HuntAndKillCollectorAlgorithm(grid, challenges.get()));
+                    title = "Hunt&Kill";
+                    break;
+                case 3:
+                    algo.reset(new KruskalsCollectorAlgorithm(grid, challenges.get()));
+                    title = "Kruskal's";
+                    break;
+                default:
+                    algo.reset(new DFSCollectorAlgorithm(grid, challenges.get()));
+                    title = "DFS";
+                    break;
+            }
+            
+            // Menú 3: Estrategia
+            std::vector<std::string> strategyOptions = {
+                "A* (g + h Manhattan)",
+                "Greedy (h only)",
+                "UCS (g only, Dijkstra)",
+                "DFS (stack)"
+            };
+            Menu strategyMenu(strategyOptions, "Choose Pathfinding Strategy");
+            int stratChoice = strategyMenu.run(menuWindow);
+            if (stratChoice < 0) continue;
+            
+            SolverStrategy strategy;
+            switch (stratChoice) {
+                case 0: strategy = SolverStrategy::ASTAR; break;
+                case 1: strategy = SolverStrategy::GREEDY; break;
+                case 2: strategy = SolverStrategy::UCS; break;
+                case 3: strategy = SolverStrategy::DFS; break;
+                default: strategy = SolverStrategy::ASTAR;
+            }
+            
+            runCollectorMode(grid, *algo, *challenges, start, goal, CELL_SIZE, title, strategy, fontPtr);
+        } else {
+            switch (choice) {
+                case 0:
+                    algo.reset(new DFSAlgorithm(grid));
+                    title = "DFS";
+                    break;
+                case 1:
+                    algo.reset(new PrimsAlgorithm(grid));
+                    title = "Prim's";
+                    break;
+                case 2:
+                    algo.reset(new HuntAndKillAlgorithm(grid));
+                    title = "Hunt&Kill";
+                    break;
+                case 3:
+                    algo.reset(new KruskalsAlgorithm(grid));
+                    title = "Kruskal's";
+                    break;
+                default:
+                    algo.reset(new DFSAlgorithm(grid));
+                    title = "DFS";
+                    break;
+            }
+            
+            runAlgorithm(grid, *algo, CELL_SIZE, title, fontPtr);
+        }
+        
+        // Al cerrar ventana de juego, vuelve al inicio del loop
     }
 
     return 0;

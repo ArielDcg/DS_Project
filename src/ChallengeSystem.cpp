@@ -16,12 +16,18 @@ void ChallengeSystem::placeTreasureAt(const Coord& pos) {
     // No duplicar
     if (elements.find(pos) != elements.end()) return;
     
-    // Insertar en tabla hash
+    // ===================================
+    // INSERCIÓN EN TABLA HASH: O(1)
+    // ===================================
     elements[pos] = SpecialElement::TREASURE;
     treasurePositions.push_back(pos);
 }
 
 bool ChallengeSystem::hasTreasure(const Coord& pos) const {
+    // ===================================
+    // BÚSQUEDA EN TABLA HASH: O(1)
+    // Crítico: llamado ~1,000 veces durante pathfinding
+    // ===================================
     auto it = elements.find(pos);
     return (it != elements.end() && it->second == SpecialElement::TREASURE);
 }
