@@ -1,24 +1,19 @@
 #pragma once
 #include "Grid.h"
 #include "ChallengeSystem.h"
+#include "ExplorationHeatmap.h"
 #include <vector>
 #include <queue>
 #include <limits>
 
-// ===================================
-// ESTRATEGIAS DE PATHFINDING
-// ===================================
 enum class SolverStrategy {
-    ASTAR,      // f = g + h (costo + heurística Manhattan)
-    GREEDY,     // f = h (solo heurística)
-    UCS,        // f = g (solo costo, Dijkstra)
-    DFS         // Depth-first search (stack)
+    ASTAR,      
+    GREEDY,     
+    UCS,        
+    DFS        
 };
 
-// ===================================
-// SEGMENTO DE CAMINO
-// Para mantener colores persistentes
-// ===================================
+
 struct PathSegment {
     std::vector<Coord> path;
     int objectiveIndex;  // 0=T1, 1=T2, 2=T3, 3=Meta
@@ -28,9 +23,7 @@ struct PathSegment {
     PathSegment() : objectiveIndex(0), foundBonus(false) {}
 };
 
-// ===================================
-// COLLECTOR SOLVER
-// ===================================
+
 class CollectorSolver {
 public:
     CollectorSolver(Grid& grid, ChallengeSystem& challenges, 
@@ -49,9 +42,7 @@ public:
     // Obtener camino completo acumulado (legacy)
     const std::vector<Coord>& getFullPath() const;
     
-    // ===================================
-    // 🆕 NUEVO: Obtener segmentos con colores
-    // ===================================
+    // Obtener segmentos con colores
     const std::vector<PathSegment>& getSegments() const;
     
     // Número de tesoros recolectados
@@ -62,6 +53,8 @@ public:
     
     // Estrategia actual
     SolverStrategy getStrategy() const { return strategy; }
+
+    const ExplorationHeatmap& getHeatmap() const { return heatmap; }
 
     // Estados para visualización
     enum CellState { UNKNOWN = 0, OPEN = 1, CLOSED = 2, TREASURE_COLLECTED = 3 };
@@ -74,6 +67,8 @@ private:
     Coord start;
     Coord finalGoal;
     SolverStrategy strategy;
+    
+    ExplorationHeatmap heatmap;
     
     // Lista ordenada de objetivos
     std::vector<Coord> objectives;
@@ -96,18 +91,14 @@ private:
     };
     std::priority_queue<PQNode, std::vector<PQNode>, Compare> openPQ;
     int pushCounter = 0;
-    
-    // DFS específico
+ 
     std::vector<Coord> dfsStack;
     std::vector<std::vector<bool>> dfsVisited;
     
     Coord currentPos;
     std::vector<Coord> currentSegmentPath;
-    std::vector<Coord> fullPath;  // Legacy
+    std::vector<Coord> fullPath;
     
-    // ===================================
-    // 🆕 NUEVO: Segmentos separados
-    // ===================================
     std::vector<PathSegment> segments;
     PathSegment currentSegment;
     
@@ -128,12 +119,8 @@ private:
     float heuristic(int x, int y, const Coord& goal) const;
     float manhattan(const Coord& a, const Coord& b) const;
     
-    // ===================================
-    // 🆕 NUEVO: Recolección oportunista
-    // ===================================
     void checkOpportunisticCollection();
     void removeFromObjectives(const Coord& pos);
     
-    // Greedy mejorado
     std::vector<Coord> greedyOrderTreasures(Coord from, const std::vector<Coord>& treasures, Coord goal);
 };

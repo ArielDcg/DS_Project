@@ -1,29 +1,15 @@
 #pragma once
 #include "Grid.h"
+#include "CoordHash.h" 
 #include <unordered_map>
 #include <vector>
 
-// ===================================
-// FUNCIÓN HASH PERSONALIZADA
-// ===================================
-struct CoordHash {
-    std::size_t operator()(const Coord& c) const {
-        std::size_t h1 = std::hash<int>{}(c.x);
-        std::size_t h2 = std::hash<int>{}(c.y);
-        // XOR + bit shift para evitar colisiones
-        return h1 ^ (h2 << 1);
-    }
-};
 
 enum class SpecialElement {
     TREASURE,
     NONE
 };
 
-// ===================================
-// SISTEMA DE DESAFÍOS CON TABLA HASH
-// ESTRUCTURA 1 de 3 (✅ Implementada)
-// ===================================
 class ChallengeSystem {
 public:
     ChallengeSystem(Grid& grid);
