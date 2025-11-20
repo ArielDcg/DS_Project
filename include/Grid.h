@@ -12,7 +12,7 @@ struct Coord {
     int y = 0;
     Coord(int xx = 0, int yy = 0) : x(xx), y(yy) {}
 
-        // Operador de comparación (necesario para unordered_map)
+        // Sobrecarga del operador de comparación 
     bool operator==(const Coord& other) const {
         return x == other.x && y == other.y;
     }

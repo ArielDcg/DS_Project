@@ -14,10 +14,18 @@ set(SRC_FILES
     src/AStarSolver.cpp
     src/GreedySolver.cpp
     src/UCSSolver.cpp
+    
+    # ESTRUCTURA 1: Tabla Hash
     src/ChallengeSystem.cpp
+    
+    # ESTRUCTURA 2: Matriz Dispersa ← AGREGAR ESTO
+    src/ExplorationHeatmap.cpp
+    
+    # ESTRUCTURA 3: Árbol AVL (si lo vas a usar)
+    # src/AlgorithmRankingAVL.cpp
+    
+    # Solver
     src/CollectorSolver.cpp
-    # NO incluir CollectorMazeGen.cpp aquí (se incluye en main.cpp)
-    # Los algoritmos originales tampoco (DFS, Prims, etc) porque se incluyen
 )
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
