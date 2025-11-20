@@ -1,6 +1,7 @@
 #pragma once
 #include "Grid.h"
 #include "ChallengeSystem.h"
+#include "ExplorationHeatmap.h"
 #include <vector>
 #include <queue>
 #include <limits>
@@ -49,9 +50,7 @@ public:
     // Obtener camino completo acumulado (legacy)
     const std::vector<Coord>& getFullPath() const;
     
-    // ===================================
-    // 🆕 NUEVO: Obtener segmentos con colores
-    // ===================================
+    // Obtener segmentos con colores
     const std::vector<PathSegment>& getSegments() const;
     
     // Número de tesoros recolectados
@@ -62,6 +61,11 @@ public:
     
     // Estrategia actual
     SolverStrategy getStrategy() const { return strategy; }
+    
+    // ===================================
+    // 🆕 HEATMAP (MATRIZ DISPERSA)
+    // ===================================
+    const ExplorationHeatmap& getHeatmap() const { return heatmap; }
 
     // Estados para visualización
     enum CellState { UNKNOWN = 0, OPEN = 1, CLOSED = 2, TREASURE_COLLECTED = 3 };
@@ -74,6 +78,11 @@ private:
     Coord start;
     Coord finalGoal;
     SolverStrategy strategy;
+    
+    // ===================================
+    // 🆕 HEATMAP (ESTRUCTURA 2/3)
+    // ===================================
+    ExplorationHeatmap heatmap;
     
     // Lista ordenada de objetivos
     std::vector<Coord> objectives;
@@ -105,9 +114,6 @@ private:
     std::vector<Coord> currentSegmentPath;
     std::vector<Coord> fullPath;  // Legacy
     
-    // ===================================
-    // 🆕 NUEVO: Segmentos separados
-    // ===================================
     std::vector<PathSegment> segments;
     PathSegment currentSegment;
     
@@ -128,12 +134,8 @@ private:
     float heuristic(int x, int y, const Coord& goal) const;
     float manhattan(const Coord& a, const Coord& b) const;
     
-    // ===================================
-    // 🆕 NUEVO: Recolección oportunista
-    // ===================================
     void checkOpportunisticCollection();
     void removeFromObjectives(const Coord& pos);
     
-    // Greedy mejorado
     std::vector<Coord> greedyOrderTreasures(Coord from, const std::vector<Coord>& treasures, Coord goal);
 };

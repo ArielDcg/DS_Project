@@ -5,6 +5,7 @@
 
 CollectorSolver::CollectorSolver(Grid& grid, ChallengeSystem& chall, Coord s, Coord fg, SolverStrategy strat)
     : g(grid), challenges(chall), start(s), finalGoal(fg), strategy(strat),
+      heatmap(grid.width(), grid.height()),  // ✅ Inicializar heatmap (ESTRUCTURA 2/3)
       stateGrid(grid.width(), std::vector<CellState>(grid.height(), UNKNOWN)),
       closed(grid.width(), std::vector<bool>(grid.height(), false)),
       gScore(grid.width(), std::vector<float>(grid.height(), std::numeric_limits<float>::infinity())),
@@ -215,6 +216,11 @@ bool CollectorSolver::stepAStar() {
     stateGrid[cx][cy] = CLOSED;
     
     // ===================================
+    // 🆕 REGISTRO EN HEATMAP (MATRIZ DISPERSA)
+    // ===================================
+    heatmap.recordVisit(cx, cy);
+    
+    // ===================================
     // 🆕 DETECCIÓN OPORTUNISTA
     // ===================================
     checkOpportunisticCollection();
@@ -290,6 +296,8 @@ bool CollectorSolver::stepGreedy() {
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
     
+    heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
+    
     checkOpportunisticCollection();
     
     if (cx == currentGoal.x && cy == currentGoal.y) {
@@ -337,6 +345,8 @@ bool CollectorSolver::stepGreedy() {
 // ===================================
 // UNIFORM COST SEARCH (Dijkstra)
 // ===================================
+// UNIFORM COST SEARCH (Dijkstra)
+// ===================================
 bool CollectorSolver::stepUCS() {
     if (openPQ.empty()) {
         segmentDone = true;
@@ -358,6 +368,8 @@ bool CollectorSolver::stepUCS() {
     
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
+    
+    heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
     
     checkOpportunisticCollection();
     
@@ -419,6 +431,8 @@ bool CollectorSolver::stepDFS() {
     int cx = cur.x, cy = cur.y;
     currentPos = cur;
     stateGrid[cx][cy] = CLOSED;
+    
+    heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
     
     checkOpportunisticCollection();
     
