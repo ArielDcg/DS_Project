@@ -628,10 +628,6 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
                 rankWindow.close();
                 return;
             }
-            if (ev.is<sf::Event::KeyPressed>()) {
-                rankWindow.close();
-                return;
-            }
         }
 
         rankWindow.clear(sf::Color(30, 30, 40));
@@ -687,7 +683,7 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
             }
 
             // Instrucciones
-            sf::Text hint(*fontPtr, "Press any key or ESC to return to menu", 14);
+            sf::Text hint(*fontPtr, "Close window to return to menu", 14);
             hint.setPosition(sf::Vector2f(30, 650));
             hint.setFillColor(sf::Color(150, 150, 150));
             rankWindow.draw(hint);
@@ -740,10 +736,6 @@ void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr)
         while (auto evOpt = heatWindow.pollEvent()) {
             const sf::Event& ev = *evOpt;
             if (ev.is<sf::Event::Closed>()) {
-                heatWindow.close();
-                return;
-            }
-            if (ev.is<sf::Event::KeyPressed>()) {
                 heatWindow.close();
                 return;
             }
@@ -841,7 +833,7 @@ void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr)
             }
 
             // Hint
-            sf::Text hint(*fontPtr, "Press any key to exit", 12);
+            sf::Text hint(*fontPtr, "Close window to return to menu", 12);
             hint.setPosition(sf::Vector2f(panelX, GRID_H * CELL_SIZE - 30));
             hint.setFillColor(sf::Color(150, 150, 150));
             heatWindow.draw(hint);
@@ -903,13 +895,9 @@ int main() {
         std::string title;
 
         Coord start, goal;
-        if (isCollectorMode) {
-            start = Coord(GRID_W / 2, GRID_H / 2);
-            goal = getRandomCorner(grid, start);
-        } else {
-            start = Coord(0, 0);
-            goal = Coord(GRID_W - 1, GRID_H - 1);
-        }
+        // Todos los modos ahora empiezan en el centro y terminan en una esquina aleatoria
+        start = Coord(GRID_W / 2, GRID_H / 2);
+        goal = getRandomCorner(grid, start);
 
         if (isCollectorMode) {
             switch (choice) {
