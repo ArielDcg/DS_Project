@@ -56,30 +56,32 @@ Modo desafiante donde el solver debe recolectar 3 tesoros antes de llegar a la m
 - Visualización con colores diferentes para cada segmento del camino
 
 ### 3. **Algorithm Ranking (AVL Tree)** - NUEVO ⭐
-Sistema de benchmarking que compara el rendimiento de todos los algoritmos.
+Sistema de benchmarking que compara el rendimiento de los **algoritmos de solución (solvers)**.
 
 #### ¿Qué hace?
-Ejecuta **50 iteraciones** de cada combinación de:
-- **4 algoritmos de generación** (DFS, Prim's, Hunt&Kill, Kruskal's)
-- **4 algoritmos de solución** (A*, Greedy, UCS, DFS)
-- **Total**: 16 combinaciones × 50 iteraciones = **800 ejecuciones**
+Compara los **4 solvers** probándolos en laberintos generados por diferentes algoritmos:
+- **4 solvers evaluados**: A*, Greedy, UCS, DFS
+- **Cada solver se prueba en**: 4 tipos de laberintos × 30 iteraciones = **120 ejecuciones por solver**
+- **Total**: 4 solvers × 120 ejecuciones = **480 ejecuciones**
+
+El sistema garantiza que todos los solvers sean probados en los mismos tipos de laberintos (DFS, Prim's, Hunt&Kill, Kruskal's), eliminando el sesgo de que ciertos algoritmos funcionen mejor en ciertos tipos de laberintos.
 
 #### ¿Por qué los valores cambian?
-Los valores **NO** cambian entre compilaciones. Los valores pueden variar **entre ejecuciones** porque:
+Los valores **NO** cambian entre compilaciones. Los valores pueden variar **ligeramente entre ejecuciones** porque:
 1. Cada laberinto se genera **aleatoriamente**
 2. Las posiciones de los tesoros son **aleatorias**
-3. El sistema calcula el **promedio de 50 ejecuciones** para obtener resultados estadísticamente significativos
+3. El sistema calcula el **promedio de 120 ejecuciones por solver** para obtener resultados estadísticamente sólidos
 
 #### ¿Qué significan las columnas?
 
 | Columna | Descripción | Interpretación |
 |---------|-------------|----------------|
-| **Rank** | Posición en el ranking | 1 = Mejor combinación |
-| **Algorithm + Generation** | Combinación evaluada | Ej: "A* + DFS" = A* resolviendo laberinto generado con DFS |
+| **Rank** | Posición en el ranking | 1 = Mejor solver |
+| **Solver Algorithm** | Algoritmo de solución evaluado | A*, Greedy, UCS o DFS |
 | **Score** | Puntuación compuesta | **Mayor = Mejor**. Rango típico: 0-1000 |
-| **Nodes** | Nodos expandidos promedio | **Menor = Más eficiente** en búsqueda |
-| **Path** | Longitud del camino promedio | **Menor = Camino más corto** |
-| **Time(ms)** | Tiempo de ejecución promedio | **Menor = Más rápido** |
+| **Nodes** | Nodos expandidos promedio | **Menor = Más eficiente**. Cuenta celdas marcadas como CLOSED |
+| **Path** | Longitud del camino promedio | **Menor = Camino más corto**. Longitud total del camino encontrado |
+| **Time(ms)** | Tiempo de ejecución promedio | **Menor = Más rápido**. Solo mide el tiempo de resolución |
 | **Treasures** | Tesoros recolectados promedio | **Mayor = Mejor** (máximo: 3) |
 
 #### ¿Cómo se calcula el Score?
@@ -98,16 +100,28 @@ Score final = Score inicial - Penalizaciones + Bonificaciones
 ```
 
 **Ejemplo de interpretación:**
-- Si ves "A* + Prim's" en el puesto 1 con Score 850, significa que A* funciona excepcionalmente bien en laberintos generados por Prim's.
-- Scores > 700 = Excelente rendimiento
-- Scores 500-700 = Buen rendimiento
-- Scores < 500 = Rendimiento regular
+- Si A* está en el puesto 1 con Score 850, significa que A* es el solver más eficiente en promedio
+- Si ves Nodes=150, Path=450, significa que expandió 150 nodos para encontrar un camino de 450 celdas
+- Si Time=10ms, el solver resolvió el laberinto en 10 milisegundos en promedio
+
+**Rangos de Score:**
+- Scores > 700 = Excelente rendimiento (muy eficiente)
+- Scores 500-700 = Buen rendimiento (eficiente)
+- Scores 300-500 = Rendimiento regular
+- Scores < 300 = Rendimiento bajo (ineficiente)
 
 #### Información del Árbol AVL
 En la parte inferior se muestra:
-- **Size**: Número total de combinaciones evaluadas (siempre 16)
-- **Height**: Altura del árbol AVL (típicamente 4-5 para 16 nodos)
+- **Solvers**: Número de solvers evaluados (siempre 4)
+- **Height**: Altura del árbol AVL (típicamente 2-3 para 4 nodos)
 - **Balanced**: Confirma que el árbol está balanceado (siempre "Yes")
+
+#### ¿Por qué usar un Árbol AVL?
+El Árbol AVL auto-balanceado mantiene los solvers ordenados por score de manera eficiente:
+- **Inserción**: O(log n) - Rápido incluso con muchos solvers
+- **Búsqueda**: O(log n) - Encontrar un solver específico
+- **Ordenamiento**: In-order traversal da ranking ordenado
+- **Auto-balanceo**: Garantiza eficiencia sin importar el orden de inserción
 
 ### 4. **Exploration Heatmap (Sparse Matrix)** - NUEVO ⭐
 Visualización del comportamiento de exploración de los algoritmos de solución.

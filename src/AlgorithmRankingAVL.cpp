@@ -31,7 +31,7 @@ float AlgorithmStats::calculateScore() const {
 }
 
 std::string AlgorithmStats::getKey() const {
-    return algorithmName + "_" + generationAlgo;
+    return algorithmName;
 }
 
 

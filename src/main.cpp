@@ -532,10 +532,10 @@ void runAlgorithm(Grid &grid, MazeAlgorithm &algo, int cellSize, const std::stri
 // BENCHMARK Y RANKING DE ALGORITMOS
 // ===================================
 
-AlgorithmStats runBenchmark(const std::string& genAlgo, SolverStrategy strategy,
-                            const std::string& solverName, int gridW, int gridH) {
+// Ejecutar UN benchmark: un solver en un laberinto generado
+AlgorithmStats runSingleBenchmark(const std::string& genAlgo, SolverStrategy strategy,
+                                  const std::string& solverName, int gridW, int gridH) {
     AlgorithmStats stats;
-    stats.generationAlgo = genAlgo;
     stats.algorithmName = solverName;
 
     Grid grid(gridW, gridH);
@@ -544,7 +544,7 @@ AlgorithmStats runBenchmark(const std::string& genAlgo, SolverStrategy strategy,
     Coord start(gridW / 2, gridH / 2);
     Coord goal = getRandomCorner(grid, start);
 
-    // Generar laberinto (sin visualización)
+    // Generar laberinto (sin visualización, sin contar tiempo)
     std::unique_ptr<MazeAlgorithm> algo;
     if (genAlgo == "DFS") {
         algo.reset(new DFSCollectorAlgorithm(grid, &challenges));
@@ -560,22 +560,19 @@ AlgorithmStats runBenchmark(const std::string& genAlgo, SolverStrategy strategy,
         algo->step();
     }
 
-    // Resolver laberinto (sin visualización)
+    // Resolver laberinto (SOLO medir tiempo del solving)
     auto startTime = std::chrono::high_resolution_clock::now();
-
     CollectorSolver solver(grid, challenges, start, goal, strategy);
-    int nodesExpanded = 0;
 
     while (!solver.finished()) {
         solver.step();
-        nodesExpanded++;
     }
 
     auto endTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = endTime - startTime;
 
-    // Recopilar estadísticas
-    stats.nodesExpanded = nodesExpanded;
+    // Recopilar estadísticas REALES
+    stats.nodesExpanded = solver.getNodesExpanded();  // Contador real
     stats.pathLength = static_cast<int>(solver.getFullPath().size());
     stats.executionTime = duration.count();
     stats.treasuresCollected = solver.getTreasuresCollected();
@@ -586,7 +583,7 @@ AlgorithmStats runBenchmark(const std::string& genAlgo, SolverStrategy strategy,
 void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
     const int GRID_W = 40;
     const int GRID_H = 28;
-    const int ITERATIONS = 50;  // Número de iteraciones por combinación
+    const int ITERATIONS_PER_MAZE_TYPE = 30;  // Iteraciones por cada tipo de laberinto
 
     std::vector<std::string> genAlgos = {"DFS", "Prim's", "Hunt&Kill", "Kruskal's"};
     std::vector<std::pair<SolverStrategy, std::string>> solvers = {
@@ -598,44 +595,48 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
 
     AlgorithmRankingAVL ranking;
 
-    std::cout << "\n=== Ejecutando Benchmark de Algoritmos ===\n";
-    std::cout << "Iteraciones por combinación: " << ITERATIONS << "\n";
-    std::cout << "Total de combinaciones: " << genAlgos.size() * solvers.size() << "\n\n";
+    std::cout << "\n=== Ejecutando Benchmark de Solvers ===\n";
+    std::cout << "Cada solver se prueba en laberintos generados por " << genAlgos.size() << " algoritmos diferentes\n";
+    std::cout << "Iteraciones por tipo de laberinto: " << ITERATIONS_PER_MAZE_TYPE << "\n";
+    std::cout << "Total de tests por solver: " << genAlgos.size() * ITERATIONS_PER_MAZE_TYPE << "\n\n";
 
-    int totalTests = genAlgos.size() * solvers.size() * ITERATIONS;
-    int currentTest = 0;
+    // Ejecutar benchmarks SOLO para solvers
+    for (const auto& solverPair : solvers) {
+        std::cout << "Testing solver: " << solverPair.second << "...\n";
 
-    // Ejecutar benchmarks
-    for (const auto& genAlgo : genAlgos) {
-        for (const auto& solverPair : solvers) {
-            std::cout << "Testing: " << genAlgo << " + " << solverPair.second << "... ";
+        AlgorithmStats avgStats;
+        avgStats.algorithmName = solverPair.second;
 
-            AlgorithmStats avgStats;
-            avgStats.algorithmName = solverPair.second;
-            avgStats.generationAlgo = genAlgo;
+        int totalTests = 0;
 
-            for (int i = 0; i < ITERATIONS; i++) {
-                AlgorithmStats stats = runBenchmark(genAlgo, solverPair.first, solverPair.second, GRID_W, GRID_H);
+        // Probar en todos los tipos de laberintos
+        for (const auto& genAlgo : genAlgos) {
+            std::cout << "  " << genAlgo << " laberintos... ";
+
+            for (int i = 0; i < ITERATIONS_PER_MAZE_TYPE; i++) {
+                AlgorithmStats stats = runSingleBenchmark(genAlgo, solverPair.first, solverPair.second, GRID_W, GRID_H);
                 avgStats.nodesExpanded += stats.nodesExpanded;
                 avgStats.pathLength += stats.pathLength;
                 avgStats.executionTime += stats.executionTime;
                 avgStats.treasuresCollected += stats.treasuresCollected;
 
-                currentTest++;
+                totalTests++;
             }
 
-            // Calcular promedios
-            avgStats.nodesExpanded /= ITERATIONS;
-            avgStats.pathLength /= ITERATIONS;
-            avgStats.executionTime /= ITERATIONS;
-            avgStats.treasuresCollected /= ITERATIONS;
-
-            ranking.insert(avgStats);
-            std::cout << "Score: " << avgStats.calculateScore() << "\n";
+            std::cout << "OK\n";
         }
+
+        // Calcular promedios
+        avgStats.nodesExpanded /= totalTests;
+        avgStats.pathLength /= totalTests;
+        avgStats.executionTime /= totalTests;
+        avgStats.treasuresCollected /= totalTests;
+
+        ranking.insert(avgStats);
+        std::cout << "  Score final: " << avgStats.calculateScore() << "\n\n";
     }
 
-    std::cout << "\n=== Benchmark Completado ===\n\n";
+    std::cout << "=== Benchmark Completado ===\n\n";
 
     // Mostrar resultados en ventana
     std::vector<RankEntry> topRankings = ranking.getAll();
@@ -662,33 +663,37 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
             rankWindow.draw(titleText);
 
             // Subtítulo
-            sf::Text subtitle(*fontPtr, "Promedio de " + std::to_string(ITERATIONS) + " ejecuciones por combinación", 16);
+            int totalTests = 4 * ITERATIONS_PER_MAZE_TYPE;
+            sf::Text subtitle(*fontPtr, "Cada solver probado en " + std::to_string(totalTests) + " laberintos (4 tipos x " + std::to_string(ITERATIONS_PER_MAZE_TYPE) + " iteraciones)", 14);
             subtitle.setPosition(sf::Vector2f(30, 55));
             subtitle.setFillColor(sf::Color(180, 180, 180));
             rankWindow.draw(subtitle);
 
             // Encabezados
             float yPos = 100;
-            sf::Text header(*fontPtr, "Rank  Algorithm + Generation       Score    Nodes   Path   Time(ms)  Treasures", 14);
+            sf::Text header(*fontPtr, "Rank  Solver Algorithm           Score    Nodes   Path   Time(ms)  Treasures", 14);
             header.setPosition(sf::Vector2f(30, yPos));
             header.setFillColor(sf::Color(200, 200, 200));
             header.setStyle(sf::Text::Bold);
             rankWindow.draw(header);
 
-            yPos += 30;
+            yPos += 40;
 
             // Resultados
-            for (size_t i = 0; i < topRankings.size() && i < 15; i++) {
+            for (size_t i = 0; i < topRankings.size(); i++) {
                 const RankEntry& entry = topRankings[i];
 
-                sf::Color rowColor = (i < 3) ? sf::Color(100, 200, 100) : sf::Color(200, 200, 200);
+                // Color según ranking (mejor = verde, peor = rojo)
+                sf::Color rowColor;
+                if (i == 0) rowColor = sf::Color(100, 255, 100);      // 1º - Verde brillante
+                else if (i == 1) rowColor = sf::Color(150, 220, 100); // 2º - Verde amarillento
+                else if (i == 2) rowColor = sf::Color(255, 200, 100); // 3º - Naranja
+                else rowColor = sf::Color(255, 150, 150);             // 4º - Rojo
 
-                std::string line =
-                    std::to_string(entry.rank) + ".    " +
-                    entry.stats.algorithmName + " + " + entry.stats.generationAlgo;
+                std::string line = std::to_string(entry.rank) + ".    " + entry.stats.algorithmName;
 
                 // Padding para alinear
-                while (line.length() < 35) line += " ";
+                while (line.length() < 33) line += " ";
 
                 line += std::to_string(static_cast<int>(entry.stats.calculateScore())) + "     ";
                 line += std::to_string(entry.stats.nodesExpanded) + "      ";
@@ -696,12 +701,29 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
                 line += std::to_string(static_cast<int>(entry.stats.executionTime * 1000)) + "       ";
                 line += std::to_string(entry.stats.treasuresCollected);
 
-                sf::Text rankText(*fontPtr, line, 13);
+                sf::Text rankText(*fontPtr, line, 16);
                 rankText.setPosition(sf::Vector2f(30, yPos));
                 rankText.setFillColor(rowColor);
                 rankWindow.draw(rankText);
 
-                yPos += 25;
+                yPos += 35;
+            }
+
+            // Explicación
+            yPos += 20;
+            std::vector<std::string> explanations = {
+                "Score = 1000 - (nodos*0.5) - (path*2) - (tiempo*500) + (tesoros*50)",
+                "Nodes = Nodos expandidos (celdas marcadas como CLOSED)",
+                "Path = Longitud del camino final completo",
+                "Time = Tiempo promedio de resoluci\u00f3n en milisegundos"
+            };
+
+            for (const auto& expl : explanations) {
+                sf::Text explText(*fontPtr, expl, 11);
+                explText.setPosition(sf::Vector2f(30, yPos));
+                explText.setFillColor(sf::Color(150, 150, 150));
+                rankWindow.draw(explText);
+                yPos += 18;
             }
 
             // Instrucciones
@@ -711,7 +733,7 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
             rankWindow.draw(hint);
 
             // Info del árbol AVL
-            sf::Text treeInfo(*fontPtr, "AVL Tree - Size: " + std::to_string(ranking.size()) +
+            sf::Text treeInfo(*fontPtr, "AVL Tree - Solvers: " + std::to_string(ranking.size()) +
                              " | Height: " + std::to_string(ranking.getHeight()) +
                              " | Balanced: " + (ranking.isBalanced() ? "Yes" : "No"), 12);
             treeInfo.setPosition(sf::Vector2f(30, 625));

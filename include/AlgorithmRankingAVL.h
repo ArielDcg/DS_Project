@@ -4,19 +4,18 @@
 #include <memory>
 
 
-// Métricas de un algoritmo
+// Métricas de un algoritmo solver
 struct AlgorithmStats {
     std::string algorithmName;   // "A*", "Greedy", "UCS", "DFS"
-    std::string generationAlgo;  // "DFS", "Prim's", etc.
-    int nodesExpanded = 0;       // Nodos explorados
+    int nodesExpanded = 0;       // Nodos explorados (marcados como CLOSED)
     int pathLength = 0;          // Longitud del camino final
     float executionTime = 0.0f;  // Tiempo en segundos
     int treasuresCollected = 0;  // Tesoros recolectados
-    
+
     // Puntuacion compuesta (mayor = mejor)
     float calculateScore() const;
-    
-    // Clave única: algorithmName + generationAlgo
+
+    // Clave única: algorithmName
     std::string getKey() const;
 };
 

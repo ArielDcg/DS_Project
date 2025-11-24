@@ -56,6 +56,9 @@ public:
 
     const ExplorationHeatmap& getHeatmap() const { return heatmap; }
 
+    // Obtener número de nodos expandidos (celdas marcadas como CLOSED)
+    int getNodesExpanded() const { return nodesExpandedCount; }
+
     // Estados para visualización
     enum CellState { UNKNOWN = 0, OPEN = 1, CLOSED = 2, TREASURE_COLLECTED = 3 };
     const std::vector<std::vector<CellState>>& getStateGrid() const { return stateGrid; }
@@ -104,7 +107,10 @@ private:
     
     bool segmentDone = false;
     bool allDone = false;
-    
+
+    // Contador de nodos expandidos (celdas marcadas como CLOSED)
+    int nodesExpandedCount = 0;
+
     // Funciones auxiliares
     void initializeSearch(Coord from, Coord to);
     void initializeDFS(Coord from, Coord to);
