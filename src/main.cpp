@@ -28,6 +28,10 @@
 #include <chrono>
 #include <iostream>
 
+// Forward declarations
+void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
+                   const sf::Font* fontPtr, const std::string& windowTitle);
+
 std::string getStrategyName(SolverStrategy strategy) {
     switch (strategy) {
         case SolverStrategy::ASTAR: return "A*";
@@ -98,9 +102,19 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
     while (window.isOpen()) {
         while (auto evOpt = window.pollEvent()) {
             const sf::Event &ev = *evOpt;
-            if (ev.is<sf::Event::Closed>()) { 
-                window.close(); 
+            if (ev.is<sf::Event::Closed>()) {
+                window.close();
                 return;  // Volver al menú
+            }
+
+            // Permitir ver heatmap cuando el solver ha terminado
+            if (ev.is<sf::Event::KeyPressed>()) {
+                const auto* keyEv = ev.getIf<sf::Event::KeyPressed>();
+                if (solverInitialized && solver && solver->finished() &&
+                    keyEv && keyEv->code == sf::Keyboard::Key::H) {
+                    displayHeatmap(grid, solver->getHeatmap(), fontPtr,
+                                  title + " - Exploration Heatmap [" + getStrategyName(strategy) + "]");
+                }
             }
         }
 
@@ -293,6 +307,14 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
                 oText.setPosition(sf::Vector2f(6.f, 44.f));
                 oText.setFillColor(sf::Color(200, 200, 200));
                 window.draw(oText);
+
+                // Mostrar hint para ver heatmap cuando termine
+                if (solver->finished()) {
+                    sf::Text hintText(*fontPtr, "Press H to view Exploration Heatmap", 12);
+                    hintText.setPosition(sf::Vector2f(6.f, 64.f));
+                    hintText.setFillColor(sf::Color(100, 200, 255));
+                    window.draw(hintText);
+                }
             }
         }
 
@@ -724,12 +746,24 @@ void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr)
     }
 
     const ExplorationHeatmap& heatmap = solver.getHeatmap();
+
+    // Mostrar usando la función auxiliar
+    displayHeatmap(grid, heatmap, fontPtr, "Exploration Heatmap (Sparse Matrix)");
+}
+
+// Función auxiliar para mostrar un heatmap dado
+void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
+                   const sf::Font* fontPtr, const std::string& windowTitle) {
+    const int CELL_SIZE = 20;
+    const int GRID_W = grid.width();
+    const int GRID_H = grid.height();
+
     ExplorationHeatmap::HeatmapStats stats = heatmap.getStats();
     std::vector<std::vector<float>> normalizedGrid = heatmap.toNormalizedGrid();
 
     // Ventana de visualización
     sf::RenderWindow heatWindow(sf::VideoMode(sf::Vector2u(GRID_W * CELL_SIZE + 300, GRID_H * CELL_SIZE)),
-                                "Exploration Heatmap (Sparse Matrix)");
+                                windowTitle);
     heatWindow.setFramerateLimit(60);
 
     while (heatWindow.isOpen()) {

@@ -110,10 +110,16 @@ En la parte inferior se muestra:
 - **Balanced**: Confirma que el árbol está balanceado (siempre "Yes")
 
 ### 4. **Exploration Heatmap (Sparse Matrix)** - NUEVO ⭐
-Visualización del comportamiento de exploración del algoritmo A*.
+Visualización del comportamiento de exploración de los algoritmos de solución.
+
+#### ¿Cómo acceder al Heatmap?
+Hay **dos formas** de ver el Heatmap:
+
+1. **Desde el menú principal**: Opción 4 - Genera un laberinto y lo resuelve con A* para mostrar el heatmap
+2. **Después de cualquier ejecución del Collector Mode**: Presiona la tecla **H** cuando termine el solver para ver el heatmap de **ESA ejecución específica**
 
 #### ¿Qué muestra?
-Un mapa de calor que indica **cuántas veces se visitó cada celda** durante la búsqueda de camino.
+Un mapa de calor que indica **cuántas veces se visitó cada celda** durante la búsqueda de camino del algoritmo que acabas de ejecutar.
 
 #### Colores del Heatmap
 - **Negro**: Celda nunca visitada
@@ -150,6 +156,21 @@ Como el laberinto se genera aleatoriamente cada vez:
 - El **número de visitas** puede variar según la complejidad del laberinto
 - La **cobertura** depende de la estructura del laberinto generado
 - Laberintos más complejos → más exploración → más visitas
+
+#### Comparando Algoritmos
+Una de las características más útiles es que puedes:
+1. Generar un laberinto con un algoritmo de generación
+2. Resolver con un algoritmo de solución (ej: A*)
+3. Ver el heatmap presionando **H**
+4. Cerrar la ventana del heatmap
+5. Cerrar la ventana de ejecución
+6. Repetir con **otro algoritmo de solución** en el **mismo tipo de laberinto**
+7. Comparar visualmente cómo diferentes algoritmos exploran el espacio
+
+**Ejemplo de uso:**
+- Genera con DFS, resuelve con A*, presiona H → ves cómo A* explora
+- Genera con DFS, resuelve con Greedy, presiona H → ves cómo Greedy explora
+- Compara: ¿Cuál visitó menos celdas? ¿Cuál fue más eficiente?
 
 ---
 
