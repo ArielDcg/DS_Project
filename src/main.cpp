@@ -671,7 +671,7 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
 
             // Encabezados
             float yPos = 100;
-            sf::Text header(*fontPtr, "Rank  Solver Algorithm           Score    Nodes   Path   Time(ms)  Treasures", 14);
+            sf::Text header(*fontPtr, "Rank  Solver Algorithm           Score    Nodes   Time(ms)  Treasures", 14);
             header.setPosition(sf::Vector2f(30, yPos));
             header.setFillColor(sf::Color(200, 200, 200));
             header.setStyle(sf::Text::Bold);
@@ -697,7 +697,6 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
 
                 line += std::to_string(static_cast<int>(entry.stats.calculateScore())) + "     ";
                 line += std::to_string(entry.stats.nodesExpanded) + "      ";
-                line += std::to_string(entry.stats.pathLength) + "     ";
                 line += std::to_string(static_cast<int>(entry.stats.executionTime * 1000)) + "       ";
                 line += std::to_string(entry.stats.treasuresCollected);
 
@@ -712,9 +711,8 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
             // Explicación
             yPos += 20;
             std::vector<std::string> explanations = {
-                "Score = 1000 - (nodos*0.5) - (path*2) - (tiempo*500) + (tesoros*50)",
+                "Score = 1000 - (nodos*0.5) - (tiempo*500) + (tesoros*50)",
                 "Nodes = Nodos expandidos (celdas marcadas como CLOSED)",
-                "Path = Longitud del camino final completo",
                 "Time = Tiempo promedio de resoluci\u00f3n en milisegundos"
             };
 

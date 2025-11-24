@@ -4,29 +4,24 @@
 
 float AlgorithmStats::calculateScore() const {
     // Score compuesto (mayor = mejor)
-    // Penalizar nodos expandidos y longitud de camino
-    // Premiar velocidad y tesoros
-    
+    // Penalizar nodos expandidos y tiempo
+    // Premiar tesoros recolectados
+
     float score = 1000.0f;
-    
+
     // Penalizar expansión (0-500 puntos perdidos)
     if (nodesExpanded > 0) {
         score -= std::min(500.0f, nodesExpanded * 0.5f);
     }
-    
-    // Penalizar longitud (0-300 puntos perdidos)
-    if (pathLength > 0) {
-        score -= std::min(300.0f, pathLength * 2.0f);
-    }
-    
+
     // Penalizar tiempo (0-100 puntos perdidos)
     if (executionTime > 0.0f) {
         score -= std::min(100.0f, executionTime * 500.0f);
     }
-    
+
     // Bonus por tesoros (0-150 puntos)
     score += treasuresCollected * 50.0f;
-    
+
     return std::max(0.0f, score);
 }
 

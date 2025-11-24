@@ -80,7 +80,6 @@ Los valores **NO** cambian entre compilaciones. Los valores pueden variar **lige
 | **Solver Algorithm** | Algoritmo de solución evaluado | A*, Greedy, UCS o DFS |
 | **Score** | Puntuación compuesta | **Mayor = Mejor**. Rango típico: 0-1000 |
 | **Nodes** | Nodos expandidos promedio | **Menor = Más eficiente**. Cuenta celdas marcadas como CLOSED |
-| **Path** | Longitud del camino promedio | **Menor = Camino más corto**. Longitud total del camino encontrado |
 | **Time(ms)** | Tiempo de ejecución promedio | **Menor = Más rápido**. Solo mide el tiempo de resolución |
 | **Treasures** | Tesoros recolectados promedio | **Mayor = Mejor** (máximo: 3) |
 
@@ -90,7 +89,6 @@ Score inicial = 1000 puntos
 
 Penalizaciones:
 - Nodos expandidos: -0.5 puntos por nodo (máx. -500)
-- Longitud de camino: -2 puntos por celda (máx. -300)
 - Tiempo de ejecución: -500 puntos por segundo (máx. -100)
 
 Bonificaciones:
@@ -101,7 +99,7 @@ Score final = Score inicial - Penalizaciones + Bonificaciones
 
 **Ejemplo de interpretación:**
 - Si A* está en el puesto 1 con Score 850, significa que A* es el solver más eficiente en promedio
-- Si ves Nodes=150, Path=450, significa que expandió 150 nodos para encontrar un camino de 450 celdas
+- Si ves Nodes=150, significa que expandió 150 nodos durante la búsqueda
 - Si Time=10ms, el solver resolvió el laberinto en 10 milisegundos en promedio
 
 **Rangos de Score:**

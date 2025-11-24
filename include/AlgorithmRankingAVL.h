@@ -8,11 +8,11 @@
 struct AlgorithmStats {
     std::string algorithmName;   // "A*", "Greedy", "UCS", "DFS"
     int nodesExpanded = 0;       // Nodos explorados (marcados como CLOSED)
-    int pathLength = 0;          // Longitud del camino final
+    int pathLength = 0;          // Longitud del camino final (no usado en score)
     float executionTime = 0.0f;  // Tiempo en segundos
     int treasuresCollected = 0;  // Tesoros recolectados
 
-    // Puntuacion compuesta (mayor = mejor)
+    // Puntuacion compuesta basada en: nodos expandidos, tiempo y tesoros (mayor = mejor)
     float calculateScore() const;
 
     // Clave única: algorithmName
