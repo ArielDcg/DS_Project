@@ -765,13 +765,13 @@ void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr)
                     cellColor = sf::Color(10, 10, 10);  // No visitado
                 } else if (intensity < 0.33f) {
                     float t = intensity / 0.33f;
-                    cellColor = sf::Color(0, static_cast<sf::Uint8>(t * 100), static_cast<sf::Uint8>(100 + t * 155));
+                    cellColor = sf::Color(0, static_cast<int>(t * 100), static_cast<int>(100 + t * 155));
                 } else if (intensity < 0.66f) {
                     float t = (intensity - 0.33f) / 0.33f;
-                    cellColor = sf::Color(static_cast<sf::Uint8>(t * 255), static_cast<sf::Uint8>(100 + t * 155), static_cast<sf::Uint8>(255 - t * 255));
+                    cellColor = sf::Color(static_cast<int>(t * 255), static_cast<int>(100 + t * 155), static_cast<int>(255 - t * 255));
                 } else {
                     float t = (intensity - 0.66f) / 0.34f;
-                    cellColor = sf::Color(255, static_cast<sf::Uint8>(255 - t * 100), 0);
+                    cellColor = sf::Color(255, static_cast<int>(255 - t * 100), 0);
                 }
 
                 cell.setFillColor(cellColor);
