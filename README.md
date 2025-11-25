@@ -1,8 +1,190 @@
 # DS_Project
 ## Video de Resultados
 [Demostración](https://drive.google.com/file/d/1WFURZozSwdg8ouFHPSDQJrtCVzJ8VCXf/view?usp=sharing)
+
 ## Manual de Usuario
-Para realizar el setup, dirígase al manual [manual](docs/manualDeUsuario.md)
+Para realizar el setup completo, dirígase al [manual de usuario](docs/manualDeUsuario.md)
+
+### Compilación Rápida
+
+#### Usando los scripts incluidos (Recomendado):
+
+```bash
+# Compilar el proyecto
+./build.sh
+
+# Ejecutar el programa
+./run.sh
+```
+
+#### Compilación manual con CMake:
+
+```bash
+# Crear directorio de compilación
+mkdir -p build
+cd build
+
+# Configurar con CMake
+cmake ..
+
+# Compilar
+make
+
+# Ejecutar
+./maze_app
+```
+
+**Nota importante**: Todos los archivos generados por CMake se almacenan en el directorio `build/` para mantener el repositorio limpio. Nunca ejecutes CMake directamente en el directorio raíz o `src/`.
+
+---
+
+## Modos de Juego
+
+El programa ofrece 4 modos distintos de funcionamiento:
+
+### 1. **Classic Mode**
+Modo tradicional de generación y resolución de laberintos.
+- **Inicio**: Centro del laberinto
+- **Meta**: Esquina aleatoria
+- Visualización paso a paso de la generación y resolución
+
+### 2. **Collector Mode (3 Treasures)**
+Modo desafiante donde el solver debe recolectar 3 tesoros antes de llegar a la meta.
+- **Inicio**: Centro del laberinto
+- **Objetivo**: Recolectar 3 tesoros + llegar a la meta
+- **Estrategias disponibles**: A*, Greedy, UCS, DFS
+- Visualización con colores diferentes para cada segmento del camino
+
+### 3. **Algorithm Ranking (AVL Tree)** - NUEVO ⭐
+Sistema de benchmarking que compara el rendimiento de los **algoritmos de solución (solvers)**.
+
+#### ¿Qué hace?
+Compara los **4 solvers** probándolos en laberintos generados por diferentes algoritmos:
+- **4 solvers evaluados**: A*, Greedy, UCS, DFS
+- **Cada solver se prueba en**: 4 tipos de laberintos × 30 iteraciones = **120 ejecuciones por solver**
+- **Total**: 4 solvers × 120 ejecuciones = **480 ejecuciones**
+
+El sistema garantiza que todos los solvers sean probados en los mismos tipos de laberintos (DFS, Prim's, Hunt&Kill, Kruskal's), eliminando el sesgo de que ciertos algoritmos funcionen mejor en ciertos tipos de laberintos.
+
+#### ¿Por qué los valores cambian?
+Los valores **NO** cambian entre compilaciones. Los valores pueden variar **ligeramente entre ejecuciones** porque:
+1. Cada laberinto se genera **aleatoriamente**
+2. Las posiciones de los tesoros son **aleatorias**
+3. El sistema calcula el **promedio de 120 ejecuciones por solver** para obtener resultados estadísticamente sólidos
+
+#### ¿Qué significan las columnas?
+
+| Columna | Descripción | Interpretación |
+|---------|-------------|----------------|
+| **Rank** | Posición en el ranking | 1 = Mejor solver |
+| **Solver Algorithm** | Algoritmo de solución evaluado | A*, Greedy, UCS o DFS |
+| **Score** | Puntuación compuesta | **Mayor = Mejor**. Rango típico: 0-1000 |
+| **Nodes** | Nodos expandidos promedio | **Menor = Más eficiente**. Cuenta celdas marcadas como CLOSED |
+| **Time(ms)** | Tiempo de ejecución promedio | **Menor = Más rápido**. Solo mide el tiempo de resolución |
+| **Treasures** | Tesoros recolectados promedio | **Mayor = Mejor** (máximo: 3) |
+
+#### ¿Cómo se calcula el Score?
+```
+Score inicial = 1000 puntos
+
+Penalizaciones:
+- Nodos expandidos: -0.5 puntos por nodo (máx. -500)
+- Tiempo de ejecución: -500 puntos por segundo (máx. -100)
+
+Bonificaciones:
++ 50 puntos por cada tesoro recolectado (máx. +150)
+
+Score final = Score inicial - Penalizaciones + Bonificaciones
+```
+
+**Ejemplo de interpretación:**
+- Si A* está en el puesto 1 con Score 850, significa que A* es el solver más eficiente en promedio
+- Si ves Nodes=150, significa que expandió 150 nodos durante la búsqueda
+- Si Time=10ms, el solver resolvió el laberinto en 10 milisegundos en promedio
+
+**Rangos de Score:**
+- Scores > 700 = Excelente rendimiento (muy eficiente)
+- Scores 500-700 = Buen rendimiento (eficiente)
+- Scores 300-500 = Rendimiento regular
+- Scores < 300 = Rendimiento bajo (ineficiente)
+
+#### Información del Árbol AVL
+En la parte inferior se muestra:
+- **Solvers**: Número de solvers evaluados (siempre 4)
+- **Height**: Altura del árbol AVL (típicamente 2-3 para 4 nodos)
+- **Balanced**: Confirma que el árbol está balanceado (siempre "Yes")
+
+#### ¿Por qué usar un Árbol AVL?
+El Árbol AVL auto-balanceado mantiene los solvers ordenados por score de manera eficiente:
+- **Inserción**: O(log n) - Rápido incluso con muchos solvers
+- **Búsqueda**: O(log n) - Encontrar un solver específico
+- **Ordenamiento**: In-order traversal da ranking ordenado
+- **Auto-balanceo**: Garantiza eficiencia sin importar el orden de inserción
+
+### 4. **Exploration Heatmap (Sparse Matrix)** - NUEVO ⭐
+Visualización del comportamiento de exploración de los algoritmos de solución.
+
+#### ¿Cómo acceder al Heatmap?
+Hay **dos formas** de ver el Heatmap:
+
+1. **Desde el menú principal**: Opción 4 - Genera un laberinto y lo resuelve con A* para mostrar el heatmap
+2. **Después de cualquier ejecución del Collector Mode**: Presiona la tecla **H** cuando termine el solver para ver el heatmap de **ESA ejecución específica**
+
+#### ¿Qué muestra?
+Un mapa de calor que indica **cuántas veces se visitó cada celda** durante la búsqueda de camino del algoritmo que acabas de ejecutar.
+
+#### Colores del Heatmap
+- **Negro**: Celda nunca visitada
+- **Azul oscuro**: Pocas visitas (baja exploración)
+- **Verde**: Visitas moderadas
+- **Amarillo**: Muchas visitas
+- **Rojo/Naranja**: Visitada repetidamente (máxima exploración)
+
+#### ¿Qué significan las estadísticas?
+
+| Estadística | Descripción | Interpretación |
+|-------------|-------------|----------------|
+| **Total Visits** | Suma total de todas las visitas | Indica cuánto "trabajo" hizo el algoritmo |
+| **Unique Cells** | Celdas únicas visitadas | Número de celdas exploradas al menos una vez |
+| **Max Visits** | Máximo de visitas en una celda | Celdas problemáticas donde el algoritmo retrocedió mucho |
+| **Avg Visits** | Promedio de visitas por celda | Eficiencia promedio de exploración |
+| **Coverage** | Porcentaje del grid visitado | % del laberinto que se exploró |
+
+#### Sparse Matrix (Matriz Dispersa)
+El panel muestra la eficiencia de memoria de la matriz dispersa:
+- **Size**: Número de entradas almacenadas (solo celdas visitadas)
+- **vs Full**: Tamaño de una matriz completa (40×28 = 1120 celdas)
+- **Saved**: Celdas NO almacenadas (ahorro de memoria)
+
+**Ejemplo:**
+- Size: 340 entries
+- vs Full: 1120
+- Saved: 780 (70% de ahorro de memoria)
+
+Esto demuestra que la matriz dispersa solo almacena las celdas **realmente visitadas**, ahorrando memoria significativamente.
+
+#### ¿Por qué algunos valores cambian?
+Como el laberinto se genera aleatoriamente cada vez:
+- El **número de visitas** puede variar según la complejidad del laberinto
+- La **cobertura** depende de la estructura del laberinto generado
+- Laberintos más complejos → más exploración → más visitas
+
+#### Comparando Algoritmos
+Una de las características más útiles es que puedes:
+1. Generar un laberinto con un algoritmo de generación
+2. Resolver con un algoritmo de solución (ej: A*)
+3. Ver el heatmap presionando **H**
+4. Cerrar la ventana del heatmap
+5. Cerrar la ventana de ejecución
+6. Repetir con **otro algoritmo de solución** en el **mismo tipo de laberinto**
+7. Comparar visualmente cómo diferentes algoritmos exploran el espacio
+
+**Ejemplo de uso:**
+- Genera con DFS, resuelve con A*, presiona H → ves cómo A* explora
+- Genera con DFS, resuelve con Greedy, presiona H → ves cómo Greedy explora
+- Compara: ¿Cuál visitó menos celdas? ¿Cuál fue más eficiente?
+
+---
 
 ## Generación de Laberintos Perfectos - Documentación 
 

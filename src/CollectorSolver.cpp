@@ -199,9 +199,10 @@ bool CollectorSolver::stepAStar() {
     
     int cx = node.x, cy = node.y;
     currentPos = Coord(cx, cy);
-    
+
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
+    nodesExpandedCount++;  // Incrementar contador
 
     heatmap.recordVisit(cx, cy);
 
@@ -271,12 +272,13 @@ bool CollectorSolver::stepGreedy() {
     
     int cx = node.x, cy = node.y;
     currentPos = Coord(cx, cy);
-    
+
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
-    
-    heatmap.recordVisit(cx, cy); 
-    
+    nodesExpandedCount++;  // Incrementar contador
+
+    heatmap.recordVisit(cx, cy);
+
     checkOpportunisticCollection();
     
     if (cx == currentGoal.x && cy == currentGoal.y) {
@@ -339,12 +341,13 @@ bool CollectorSolver::stepUCS() {
     
     int cx = node.x, cy = node.y;
     currentPos = Coord(cx, cy);
-    
+
     closed[cx][cy] = true;
     stateGrid[cx][cy] = CLOSED;
-    
-    heatmap.recordVisit(cx, cy);  
-    
+    nodesExpandedCount++;  // Incrementar contador
+
+    heatmap.recordVisit(cx, cy);
+
     checkOpportunisticCollection();
     
     if (cx == currentGoal.x && cy == currentGoal.y) {
@@ -405,9 +408,10 @@ bool CollectorSolver::stepDFS() {
     int cx = cur.x, cy = cur.y;
     currentPos = cur;
     stateGrid[cx][cy] = CLOSED;
-    
+    nodesExpandedCount++;  // Incrementar contador
+
     heatmap.recordVisit(cx, cy);  // ✅ Registrar en heatmap
-    
+
     checkOpportunisticCollection();
     
     // ¿Llegamos al objetivo?

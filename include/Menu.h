@@ -23,4 +23,3 @@ private:
     bool fontLoaded = false;
     sf::Font font;
 };
-(necesario para unordered_map)
