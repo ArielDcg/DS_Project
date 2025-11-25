@@ -1,5 +1,6 @@
 # DS_Project
 ## Video de Resultados
+[Sustentación Entrega 2](https://www.dropbox.com/scl/fi/jojv1htr7qb87pz4lcx7g/Entrega2WoutNoise.mp4?rlkey=7d49n43wmnhhkej1ijjqudwu1&st=0z6c9t1g&dl=0)
 [Demostración](https://drive.google.com/file/d/1WFURZozSwdg8ouFHPSDQJrtCVzJ8VCXf/view?usp=sharing)
 
 ## Manual de Usuario
