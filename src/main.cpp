@@ -32,6 +32,10 @@
 void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
                    const sf::Font* fontPtr, const std::string& windowTitle);
 
+// Tamaño global del laberinto (modificar aquí para cambiar todas las dimensiones)
+const int GRID_W = 40;
+const int GRID_H = 28;
+
 std::string getStrategyName(SolverStrategy strategy) {
     switch (strategy) {
         case SolverStrategy::ASTAR: return "A*";
@@ -581,8 +585,6 @@ AlgorithmStats runSingleBenchmark(const std::string& genAlgo, SolverStrategy str
 }
 
 void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
-    const int GRID_W = 40;
-    const int GRID_H = 28;
     const int ITERATIONS_PER_MAZE_TYPE = 30;  // Iteraciones por cada tipo de laberinto
 
     std::vector<std::string> genAlgos = {"DFS", "Prim's", "Hunt&Kill", "Kruskal's"};
@@ -744,8 +746,6 @@ void runAlgorithmRanking(sf::RenderWindow& window, const sf::Font* fontPtr) {
 }
 
 void showHeatmapVisualization(sf::RenderWindow& window, const sf::Font* fontPtr) {
-    const int GRID_W = 40;
-    const int GRID_H = 28;
     const int CELL_SIZE = 20;
 
     // Generar laberinto y resolver con A*
@@ -898,8 +898,6 @@ void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
 }
 
 int main() {
-    const int GRID_W = 40;
-    const int GRID_H = 28;
     const int CELL_SIZE = 20;
 
     sf::RenderWindow menuWindow(sf::VideoMode(sf::Vector2u(800, 600)), "Maze - Main Menu");
