@@ -28,9 +28,11 @@
 #include <chrono>
 #include <iostream>
 
-// Forward declarations
 void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
                    const sf::Font* fontPtr, const std::string& windowTitle);
+
+// Forward declaration for user vs computer mode
+void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const std::string &title);
 
 // Tamaño global del laberinto (modificar aquí para cambiar todas las dimensiones)
 const int GRID_W = 40;
@@ -320,6 +322,163 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
                     window.draw(hintText);
                 }
             }
+        }
+
+    }
+}
+
+void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const std::string &title) {
+    // Ventana más ancha para split screen
+    unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize * 2 + 20); // 20px de separación
+    unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
+    sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), title);
+    window.setFramerateLimit(60);
+
+    // USER STATE
+    Coord userPos = start;
+    bool userWon = false;
+    sf::Clock inputClock;
+    sf::Time inputDebounce = sf::milliseconds(100);
+
+    // SOLVER STATE
+    // Usamos A* para el rival computerizado pero MUY LENTO
+    std::unique_ptr<AStarSolver> solver = std::make_unique<AStarSolver>(grid, start, goal);
+    sf::Clock solverClock;
+    sf::Time solverTimer = sf::Time::Zero;
+    // 200 veces más lento que lo normal (8ms). 8ms * 200 = 1600ms = 1.6s
+    sf::Time solverStepTime = sf::milliseconds(300); 
+    bool solverWon = false;
+
+    auto drawLine = [&](sf::RenderTarget &target, float x1, float y1, float x2, float y2, const sf::Color &col) {
+        sf::Vertex verts[2];
+        verts[0].position = sf::Vector2f(x1, y1);
+        verts[0].color = col;
+        verts[1].position = sf::Vector2f(x2, y2);
+        verts[1].color = col;
+        target.draw(verts, 2, sf::PrimitiveType::Lines);
+    };
+
+    auto drawMaze = [&](float offsetX, const Coord& playerPos, const sf::Color& playerColor) {
+        for (int y = 0; y < grid.height(); ++y) {
+            for (int x = 0; x < grid.width(); ++x) {
+                float xpos = offsetX + x * cellSize;
+                float ypos = y * cellSize;
+
+                if (grid.at(x, y).visited) {
+                    sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
+                    rect.setPosition(sf::Vector2f(xpos, ypos));
+                    // Color ligeramente diferente para cada lado
+                    rect.setFillColor(offsetX > 0 ? sf::Color(40, 40, 50) : sf::Color(50, 40, 40)); 
+                    window.draw(rect);
+                }
+
+                if (grid.at(x, y).walls[0]) drawLine(window, xpos, ypos, xpos + cellSize, ypos, sf::Color(200,200,200));
+                if (grid.at(x, y).walls[1]) drawLine(window, xpos, ypos, xpos, ypos + cellSize, sf::Color(200,200,200));
+                if (grid.at(x, y).walls[2]) drawLine(window, xpos + cellSize, ypos, xpos + cellSize, ypos + cellSize, sf::Color(200,200,200));
+                if (grid.at(x, y).walls[3]) drawLine(window, xpos, ypos + cellSize, xpos + cellSize, ypos + cellSize, sf::Color(200,200,200));
+            }
+        }
+        
+        // Goal
+        sf::RectangleShape goalRect(sf::Vector2f(cellSize * 0.6f, cellSize * 0.6f));
+        goalRect.setPosition(sf::Vector2f(offsetX + goal.x * cellSize + cellSize * 0.2f, goal.y * cellSize + cellSize * 0.2f));
+        goalRect.setFillColor(sf::Color::Red);
+        window.draw(goalRect);
+
+        // Player/Solver
+        sf::RectangleShape pRect(sf::Vector2f(cellSize * 0.8f, cellSize * 0.8f));
+        pRect.setPosition(sf::Vector2f(offsetX + playerPos.x * cellSize + cellSize * 0.1f, playerPos.y * cellSize + cellSize * 0.1f));
+        pRect.setFillColor(playerColor);
+        window.draw(pRect);
+    };
+
+    while (window.isOpen()) {
+        while (auto evOpt = window.pollEvent()) {
+            const sf::Event &ev = *evOpt;
+            if (ev.is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+        }
+
+        if (userWon || solverWon) {
+            // Juego terminado
+        } else {
+            // UPDATE USER
+            if (inputClock.getElapsedTime() > inputDebounce) {
+                int dx = 0, dy = 0;
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) dy = -1;
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) dy = 1;
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) dx = -1;
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) dx = 1;
+
+                if (dx != 0 || dy != 0) {
+                    // Check walls
+                    bool blocked = false;
+                    const auto& cell = grid.at(userPos.x, userPos.y);
+                    if (dy == -1 && cell.walls[0]) blocked = true;
+                    if (dx == 1 && cell.walls[2]) blocked = true;
+                    if (dy == 1 && cell.walls[3]) blocked = true;
+                    if (dx == -1 && cell.walls[1]) blocked = true;
+
+                    if (!blocked) {
+                        userPos.x += dx;
+                        userPos.y += dy;
+                        inputClock.restart();
+                        
+                        if (userPos.x == goal.x && userPos.y == goal.y) {
+                            userWon = true;
+                            std::cout << "USER WINS!" << std::endl;
+                        }
+                    }
+                }
+            }
+
+            // UPDATE SOLVER
+            solverTimer += solverClock.restart();
+            if (solverTimer >= solverStepTime) {
+                if (!solver->finished()) {
+                    solver->step();
+                    solverTimer = sf::Time::Zero;
+                    
+                    Coord solverPos;
+                    if (solver->getCurrent(solverPos)) {
+                        if (solverPos.x == goal.x && solverPos.y == goal.y) {
+                            solverWon = true;
+                            std::cout << "COMPUTER WINS!" << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+
+        window.clear(sf::Color::Black);
+
+        // Draw Left (User)
+        drawMaze(0, userPos, sf::Color::Cyan);
+
+        // Separator
+        sf::RectangleShape sep(sf::Vector2f(20.0f, (float)winH));
+        sep.setPosition(sf::Vector2f((float)grid.width() * cellSize, 0.0f));
+        sep.setFillColor(sf::Color(100, 100, 100));
+        window.draw(sep);
+
+        // Draw Right (Solver)
+        Coord solverCur = start;
+        solver->getCurrent(solverCur);
+        drawMaze((float)grid.width() * cellSize + 20.0f, solverCur, sf::Color::Magenta);
+
+        if (userWon) {
+            // Un simple indicador visual de victoria
+             sf::RectangleShape winOverlay(sf::Vector2f(300.0f, 100.0f));
+             winOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
+             winOverlay.setFillColor(sf::Color(0, 200, 0, 200));
+             window.draw(winOverlay);
+        } else if (solverWon) {
+             sf::RectangleShape loseOverlay(sf::Vector2f(300.0f, 100.0f));
+             loseOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
+             loseOverlay.setFillColor(sf::Color(200, 0, 0, 200));
+             window.draw(loseOverlay);
         }
 
         window.display();
@@ -897,6 +1056,7 @@ void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
     }
 }
 
+
 int main() {
     const int CELL_SIZE = 20;
 
@@ -913,7 +1073,8 @@ int main() {
             "Classic Mode",
             "Collector Mode (3 Treasures)",
             "Algorithm Ranking (AVL Tree)",
-            "Exploration Heatmap (Sparse Matrix)"
+            "Exploration Heatmap (Sparse Matrix)",
+            "User vs Solver Mode"
         };
         Menu modeMenu(modeOptions, "Select Game Mode");
         int modeChoice = modeMenu.run(menuWindow);
@@ -927,6 +1088,20 @@ int main() {
         if (modeChoice == 3) {
             showHeatmapVisualization(menuWindow, fontPtr);
             continue;
+        }
+
+        if (modeChoice == 4) {
+             Grid grid(GRID_W, GRID_H);
+             Coord start(GRID_W / 2, GRID_H / 2);
+             Coord goal = getRandomCorner(grid, start);
+
+             // Use DFS for generation (fast and reliable)
+             ChallengeSystem challenges(grid); // dummy
+             DFSAlgorithm genAlgo(grid);
+             while(!genAlgo.finished()) genAlgo.step();
+
+             runUserVsComputer(grid, start, goal, CELL_SIZE, "User vs Solver");
+             continue;
         }
 
         bool isCollectorMode = (modeChoice == 1);
@@ -996,8 +1171,10 @@ int main() {
             }
             
             runCollectorMode(grid, *algo, *challenges, start, goal, CELL_SIZE, title, strategy, fontPtr);
+            
         } else {
-            switch (choice) {
+             // Classic Algorithm
+             switch (choice) {
                 case 0:
                     algo.reset(new DFSAlgorithm(grid));
                     title = "DFS";
@@ -1019,7 +1196,6 @@ int main() {
                     title = "DFS";
                     break;
             }
-            
             runAlgorithm(grid, *algo, CELL_SIZE, title, fontPtr);
         }
         
