@@ -78,13 +78,13 @@ int Menu::run(sf::RenderWindow &window) {
             }
         }
 
-        window.clear(sf::Color(30, 30, 30));
+        window.clear(sf::Color(10, 5, 20)); // Cyberpunk BG
 
         // draw title using constructor that takes a font
         if (fontLoaded) {
             sf::Text titleText(font, title, 32);
             titleText.setPosition(sf::Vector2f(static_cast<float>(W / 2 - 160), static_cast<float>(startY - 96)));
-            titleText.setFillColor(sf::Color::White);
+            titleText.setFillColor(sf::Color(255, 0, 255)); // Neon Magenta
             window.draw(titleText);
         }
 
@@ -93,14 +93,25 @@ int Menu::run(sf::RenderWindow &window) {
             int by = startY + static_cast<int>(i) * (boxH + 12);
             sf::RectangleShape box(sf::Vector2f(static_cast<float>(boxW), static_cast<float>(boxH)));
             box.setPosition(sf::Vector2f(static_cast<float>(bx), static_cast<float>(by)));
-            if (static_cast<int>(i) == selected) box.setFillColor(sf::Color(60, 120, 220));
-            else box.setFillColor(sf::Color(80, 80, 80));
+            
+            if (static_cast<int>(i) == selected) {
+                box.setFillColor(sf::Color(0, 255, 255)); // Neon Cyan Selected
+            } else {
+                box.setFillColor(sf::Color(40, 20, 60)); // Dark Purple Unselected
+                box.setOutlineThickness(1.0f);
+                box.setOutlineColor(sf::Color(100, 0, 100));
+            }
             window.draw(box);
 
             if (fontLoaded) {
                 sf::Text t(font, options[i], 22);
                 t.setPosition(sf::Vector2f(static_cast<float>(bx + 16), static_cast<float>(by + boxH / 2 - 12)));
-                t.setFillColor(sf::Color::White);
+                
+                if (static_cast<int>(i) == selected) {
+                    t.setFillColor(sf::Color::Black);
+                } else {
+                    t.setFillColor(sf::Color(0, 255, 255)); // Cyan Text
+                }
                 window.draw(t);
             }
         }
@@ -108,7 +119,7 @@ int Menu::run(sf::RenderWindow &window) {
         if (fontLoaded) {
             sf::Text hint(font, "Use Up/Down + Enter, or click a box", 16);
             hint.setPosition(sf::Vector2f(static_cast<float>(W / 2 - 160), static_cast<float>(startY + static_cast<int>(options.size()) * (boxH + 12) + 12)));
-            hint.setFillColor(sf::Color(200, 200, 200));
+            hint.setFillColor(sf::Color(0, 255, 100)); // Neon Green Hint
             window.draw(hint);
         }
 

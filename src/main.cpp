@@ -32,11 +32,22 @@ void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
                    const sf::Font* fontPtr, const std::string& windowTitle);
 
 // Forward declaration for user vs computer mode
-void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const std::string &title);
+void runUserVsComputer(int gridW, int gridH, const std::string &title,
+                       SolverStrategy strategy, sf::Time solverStepTime);
 
 // Tamaño global del laberinto (modificar aquí para cambiar todas las dimensiones)
 const int GRID_W = 40;
 const int GRID_H = 28;
+
+// --- CYBERPUNK PALETTE CONSTANTS ---
+const sf::Color CP_BG(10, 5, 20);            // Dark Violet/Black
+const sf::Color CP_WALL(0, 200, 255);        // Neon Blue
+const sf::Color CP_USER(255, 0, 110);        // Neon Pink/Red
+const sf::Color CP_SOLVER(180, 50, 255);     // Neon Purple
+const sf::Color CP_TRACE_USER(255, 0, 110, 100);
+const sf::Color CP_TRACE_SOLVER(180, 50, 255, 100);
+const sf::Color CP_SOLUTION(0, 255, 0);      // Neon Green
+const sf::Color CP_GOAL(255, 50, 50);        // Red Neon
 
 std::string getStrategyName(SolverStrategy strategy) {
     switch (strategy) {
@@ -80,6 +91,7 @@ ObjectiveColors getColorsForObjective(int objectiveIndex) {
     return colors;
 }
 
+// --- RUN COLLECTOR MODE ---
 void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challenges,
                       Coord start, Coord goal, int cellSize, const std::string &title,
                       SolverStrategy strategy, const sf::Font *fontPtr = nullptr) {
@@ -110,10 +122,9 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
             const sf::Event &ev = *evOpt;
             if (ev.is<sf::Event::Closed>()) {
                 window.close();
-                return;  // Volver al menú
+                return;
             }
 
-            // Permitir ver heatmap cuando el solver ha terminado
             if (ev.is<sf::Event::KeyPressed>()) {
                 const auto* keyEv = ev.getIf<sf::Event::KeyPressed>();
                 if (solverInitialized && solver && solver->finished() &&
@@ -159,7 +170,7 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
             }
         }
 
-        // Tesoros
+        // Treasures
         const std::vector<Coord>& treasures = challenges.getTreasurePositions();
         for (const Coord& t : treasures) {
             if (challenges.hasTreasure(t)) {
@@ -182,7 +193,7 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
             }
         }
 
-        // Inicio y Meta
+        // Start/Goal
         sf::CircleShape startMarker(cellSize * 0.4f);
         startMarker.setPosition(sf::Vector2f(start.x * cellSize + cellSize * 0.1f, start.y * cellSize + cellSize * 0.1f));
         startMarker.setFillColor(sf::Color(0, 255, 0, 150));
@@ -193,7 +204,7 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
         goalMarker.setFillColor(sf::Color(255, 0, 0, 150));
         window.draw(goalMarker);
 
-        // Generación
+        // Generation Cursor
         Coord genCur;
         if (!algo.finished() && algo.getCurrent(genCur)) {
             sf::RectangleShape curRect(sf::Vector2f((float)cellSize, (float)cellSize));
@@ -202,7 +213,7 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
             window.draw(curRect);
         }
 
-        // Solver
+        // Solver Render
         if (solverInitialized && solver) {
             const auto& states = solver->getStateGrid();
             const auto& gGrid = solver->getGScoreGrid();
@@ -226,22 +237,20 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
                         r.setPosition(sf::Vector2f(xpos, ypos));
                         r.setFillColor(colors.closed);
                         window.draw(r);
-                    }
-
-                    if (states[x][y] == CollectorSolver::OPEN) {
-                        float v = gGrid[x][y];
-                        float t = 0.0f;
-                        if (v < std::numeric_limits<float>::infinity()) t = std::min(1.0f, v / maxG);
-                        
-                        sf::Color baseColor = colors.closed;
-                        uint8_t rcol = static_cast<uint8_t>(baseColor.r * t + 120 * (1.0f - t));
-                        uint8_t gcol = static_cast<uint8_t>(baseColor.g * t + 100 * (1.0f - t));
-                        uint8_t bcol = static_cast<uint8_t>(baseColor.b * t + 80 * (1.0f - t));
-                        
-                        sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
-                        r.setPosition(sf::Vector2f(xpos, ypos));
-                        r.setFillColor(sf::Color(rcol, gcol, bcol, 120));
-                        window.draw(r);
+                    } else if (states[x][y] == CollectorSolver::OPEN) {
+                         float v = gGrid[x][y];
+                         float t = 0.0f;
+                         if (v < std::numeric_limits<float>::infinity()) t = std::min(1.0f, v / maxG);
+                         
+                         sf::Color baseColor = colors.closed;
+                         uint8_t rcol = static_cast<uint8_t>(baseColor.r * t + 120 * (1.0f - t));
+                         uint8_t gcol = static_cast<uint8_t>(baseColor.g * t + 100 * (1.0f - t));
+                         uint8_t bcol = static_cast<uint8_t>(baseColor.b * t + 80 * (1.0f - t));
+                         
+                         sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                         r.setPosition(sf::Vector2f(xpos, ypos));
+                         r.setFillColor(sf::Color(rcol, gcol, bcol, 120));
+                         window.draw(r);
                     }
                 }
             }
@@ -256,29 +265,23 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
                 window.draw(s);
             }
 
-            // SEGMENTOS CON COLORES PERSISTENTES
+            // Path Segments
             const std::vector<PathSegment>& segments = solver->getSegments();
             for (const PathSegment& seg : segments) {
                 ObjectiveColors segColors = getColorsForObjective(seg.objectiveIndex);
-                
                 for (const Coord& c : seg.path) {
                     sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
                     rect.setPosition(sf::Vector2f((float)c.x * cellSize, (float)c.y * cellSize));
                     rect.setFillColor(segColors.path);
                     window.draw(rect);
                 }
-                
-                // Tesoro bonus (verde brillante)
                 if (seg.foundBonus) {
                     sf::CircleShape bonus(cellSize * 0.4f);
                     bonus.setPosition(sf::Vector2f(seg.bonusTreasure.x * cellSize + cellSize * 0.1f, 
                                                     seg.bonusTreasure.y * cellSize + cellSize * 0.1f));
                     bonus.setFillColor(sf::Color(0, 255, 0, 200));
-                    bonus.setOutlineThickness(3.0f);
-                    bonus.setOutlineColor(sf::Color(255, 255, 255));
                     window.draw(bonus);
                 }
-                
                 for (size_t i = 1; i < seg.path.size(); ++i) {
                     const Coord& a = seg.path[i-1];
                     const Coord& b = seg.path[i];
@@ -291,98 +294,244 @@ void runCollectorMode(Grid &grid, MazeAlgorithm &algo, ChallengeSystem &challeng
             }
         }
 
-        // Overlay
+        // Overlay text
         if (fontPtr) {
             sf::Text titleText(*fontPtr, title + " - " + getStrategyName(strategy), 16);
             titleText.setPosition(sf::Vector2f(6.f, 6.f));
             titleText.setFillColor(sf::Color(235,235,235,230));
             window.draw(titleText);
-
-            if (solverInitialized) {
-                std::string treasureText = "Treasures: " + std::to_string(solver->getTreasuresCollected()) + "/3";
-                sf::Text tText(*fontPtr, treasureText, 14);
-                tText.setPosition(sf::Vector2f(6.f, 26.f));
-                tText.setFillColor(sf::Color(255, 215, 0));
-                window.draw(tText);
-                
-                int objIdx = solver->getCurrentObjectiveIndex();
-                std::string objText = "Objective: ";
-                if (objIdx < 3) objText += "Treasure " + std::to_string(objIdx + 1);
-                else objText += "GOAL";
-                sf::Text oText(*fontPtr, objText, 12);
-                oText.setPosition(sf::Vector2f(6.f, 44.f));
-                oText.setFillColor(sf::Color(200, 200, 200));
-                window.draw(oText);
-
-                // Mostrar hint para ver heatmap cuando termine
-                if (solver->finished()) {
-                    sf::Text hintText(*fontPtr, "Press H to view Exploration Heatmap", 12);
-                    hintText.setPosition(sf::Vector2f(6.f, 64.f));
-                    hintText.setFillColor(sf::Color(100, 200, 255));
-                    window.draw(hintText);
-                }
+            
+            if (solverInitialized && solver) {
+                 std::string treasureText = "Treasures: " + std::to_string(solver->getTreasuresCollected()) + "/3";
+                 sf::Text tText(*fontPtr, treasureText, 14);
+                 tText.setPosition(sf::Vector2f(6.f, 26.f));
+                 tText.setFillColor(sf::Color(255, 215, 0));
+                 window.draw(tText);
+                 
+                 // Hint at the end
+                 if (solver->finished()) {
+                     sf::Text hintText(*fontPtr, "Press H to view Exploration Heatmap", 12);
+                     hintText.setPosition(sf::Vector2f(6.f, 64.f));
+                     hintText.setFillColor(sf::Color(100, 200, 255));
+                     window.draw(hintText);
+                 }
             }
         }
-
+        window.display();
     }
 }
 
-void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const std::string &title) {
-    // Ventana más ancha para split screen
-    unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize * 2 + 20); // 20px de separación
+// --- RUN USER VS COMPUTER ---
+void runUserVsComputer(int gridW, int gridH, const std::string &title,
+                       SolverStrategy strategy, sf::Time solverStepTime) {
+    // Calculate Cell Size
+    float maxWinW = 1800.0f;
+    float maxWinH = 950.0f;
+    float cellByW = (maxWinW - 40.0f) / (2.0f * (float)gridW);
+    float cellByH = (maxWinH - 40.0f) / (float)gridH;
+    int cellSize = static_cast<int>(std::min(cellByW, cellByH));
+    if (cellSize < 5) cellSize = 5;
+
+    // Generate Maze
+    Grid grid(gridW, gridH);
+    DFSAlgorithm generator(grid);
+    while(!generator.finished()) {
+        generator.step();
+    }
+    Coord start(0, 0);
+    Coord goal(gridW - 1, gridH - 1);
+
+    unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize * 2 + 20); 
     unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), title);
     window.setFramerateLimit(60);
+
+    // Assets
+    sf::Texture wastedTexture, duckTexture;
+    bool wastedLoaded = wastedTexture.loadFromFile("assets/wasted.png");
+    bool duckLoaded = duckTexture.loadFromFile("assets/duck.png");
+
+    sf::Sprite wastedSprite(wastedTexture);
+    sf::Sprite duckSprite(duckTexture);
+    
+    if (wastedLoaded) {
+        float scale = (float)winW * 0.8f / wastedTexture.getSize().x;
+        wastedSprite.setScale(sf::Vector2f(scale, scale));
+        wastedSprite.setOrigin(sf::Vector2f(wastedTexture.getSize().x / 2.0f, wastedTexture.getSize().y / 2.0f));
+        wastedSprite.setPosition(sf::Vector2f(winW / 2.0f, winH / 2.0f));
+    }
+    if (duckLoaded) {
+        float scale = (float)winH * 0.6f / duckTexture.getSize().y;
+        duckSprite.setScale(sf::Vector2f(scale, scale));
+        duckSprite.setOrigin(sf::Vector2f(duckTexture.getSize().x / 2.0f, duckTexture.getSize().y / 2.0f));
+        duckSprite.setPosition(sf::Vector2f(winW / 2.0f, winH / 2.0f));
+    }
 
     // USER STATE
     Coord userPos = start;
     bool userWon = false;
     sf::Clock inputClock;
-    sf::Time inputDebounce = sf::milliseconds(100);
+    sf::Time inputDebounce = sf::milliseconds(80);
+
+    // USER TRACE
+    std::vector<std::vector<bool>> userVisited(grid.width(), std::vector<bool>(grid.height(), false));
+    userVisited[start.x][start.y] = true;
 
     // SOLVER STATE
-    // Usamos A* para el rival computerizado pero MUY LENTO
-    std::unique_ptr<AStarSolver> solver = std::make_unique<AStarSolver>(grid, start, goal);
+    std::unique_ptr<AStarSolver> aStar;
+    std::unique_ptr<GreedySolver> greedy;
+    std::unique_ptr<UCSSolver> ucs;
+    std::unique_ptr<MazeSolver> dfs;
+
+    switch (strategy) {
+        case SolverStrategy::ASTAR:
+            aStar = std::make_unique<AStarSolver>(grid, start, goal);
+            break;
+        case SolverStrategy::GREEDY:
+            greedy = std::make_unique<GreedySolver>(grid, start, goal);
+            break;
+        case SolverStrategy::UCS:
+            ucs = std::make_unique<UCSSolver>(grid, start, goal);
+            break;
+        case SolverStrategy::DFS:
+        default:
+            dfs = std::make_unique<MazeSolver>(grid, start, goal);
+            break;
+    }
+
     sf::Clock solverClock;
     sf::Time solverTimer = sf::Time::Zero;
-    // 200 veces más lento que lo normal (8ms). 8ms * 200 = 1600ms = 1.6s
-    sf::Time solverStepTime = sf::milliseconds(300); 
     bool solverWon = false;
 
-    auto drawLine = [&](sf::RenderTarget &target, float x1, float y1, float x2, float y2, const sf::Color &col) {
-        sf::Vertex verts[2];
-        verts[0].position = sf::Vector2f(x1, y1);
-        verts[0].color = col;
-        verts[1].position = sf::Vector2f(x2, y2);
-        verts[1].color = col;
-        target.draw(verts, 2, sf::PrimitiveType::Lines);
+    // Helper functions
+    auto solverFinished = [&]() {
+        if (aStar) return aStar->finished();
+        if (greedy) return greedy->finished();
+        if (ucs) return ucs->finished();
+        if (dfs) return dfs->finished();
+        return true; 
     };
 
-    auto drawMaze = [&](float offsetX, const Coord& playerPos, const sf::Color& playerColor) {
+    auto solverStep = [&]() {
+        if (aStar) return aStar->step();
+        if (greedy) return greedy->step();
+        if (ucs) return ucs->step();
+        if (dfs) return dfs->step();
+        return false;
+    };
+
+    auto solverCurrent = [&](Coord &out) {
+        if (aStar) return aStar->getCurrent(out);
+        if (greedy) return greedy->getCurrent(out);
+        if (ucs) return ucs->getCurrent(out);
+        if (dfs) return dfs->getCurrent(out);
+        out = start;
+        return true;
+    };
+
+    auto solverGetSolution = [&]() -> const std::vector<Coord>& {
+        static const std::vector<Coord> empty;
+        if (aStar) return aStar->getSolution();
+        if (greedy) return greedy->getSolution();
+        if (ucs) return ucs->getSolution();
+        if (dfs) return dfs->getSolution();
+        return empty;
+    };
+
+    auto drawSolverTrace = [&](float offsetX) {
+        if (dfs) {
+            const auto& visited = dfs->getVisited();
+            for (int y = 0; y < grid.height(); ++y) {
+                for (int x = 0; x < grid.width(); ++x) {
+                    if (visited[x][y]) {
+                        sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                        r.setPosition(sf::Vector2f(offsetX + x * cellSize, y * cellSize));
+                        r.setFillColor(CP_TRACE_SOLVER);
+                        window.draw(r);
+                    }
+                }
+            }
+        } else {
+            auto drawGrid = [&](const auto& solverPtr) {
+                const auto& states = solverPtr->getStateGrid();
+                for (int y = 0; y < grid.height(); ++y) {
+                    for (int x = 0; x < grid.width(); ++x) {
+                        if (states[x][y] == 2) { // CLOSED
+                            sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                            r.setPosition(sf::Vector2f(offsetX + x * cellSize, y * cellSize));
+                            r.setFillColor(CP_TRACE_SOLVER); 
+                            window.draw(r);
+                        }
+                    }
+                }
+            };
+            if (aStar) drawGrid(aStar);
+            else if (greedy) drawGrid(greedy);
+            else if (ucs) drawGrid(ucs);
+        }
+    };
+
+    auto drawLine = [&](sf::RenderTarget &target, float x1, float y1, float x2, float y2, const sf::Color &col) {
+        sf::Vertex line[] = {
+            {sf::Vector2f(x1, y1), col},
+            {sf::Vector2f(x2, y2), col}
+        };
+        target.draw(line, 2, sf::PrimitiveType::Lines);
+    };
+
+    auto drawMaze = [&](float offsetX, const Coord& playerPos, const sf::Color& playerColor, bool isUser) {
+        // Trace
+        if (isUser) {
+            for (int y = 0; y < grid.height(); ++y) {
+                for (int x = 0; x < grid.width(); ++x) {
+                    if (userVisited[x][y]) {
+                        sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                        r.setPosition(sf::Vector2f(offsetX + x * cellSize, y * cellSize));
+                        r.setFillColor(CP_TRACE_USER); 
+                        window.draw(r);
+                    }
+                }
+            }
+        } else {
+            drawSolverTrace(offsetX);
+        }
+
+        // Walls
         for (int y = 0; y < grid.height(); ++y) {
             for (int x = 0; x < grid.width(); ++x) {
                 float xpos = offsetX + x * cellSize;
                 float ypos = y * cellSize;
 
-                if (grid.at(x, y).visited) {
-                    sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
-                    rect.setPosition(sf::Vector2f(xpos, ypos));
-                    // Color ligeramente diferente para cada lado
-                    rect.setFillColor(offsetX > 0 ? sf::Color(40, 40, 50) : sf::Color(50, 40, 40)); 
-                    window.draw(rect);
-                }
-
-                if (grid.at(x, y).walls[0]) drawLine(window, xpos, ypos, xpos + cellSize, ypos, sf::Color(200,200,200));
-                if (grid.at(x, y).walls[1]) drawLine(window, xpos, ypos, xpos, ypos + cellSize, sf::Color(200,200,200));
-                if (grid.at(x, y).walls[2]) drawLine(window, xpos + cellSize, ypos, xpos + cellSize, ypos + cellSize, sf::Color(200,200,200));
-                if (grid.at(x, y).walls[3]) drawLine(window, xpos, ypos + cellSize, xpos + cellSize, ypos + cellSize, sf::Color(200,200,200));
+                if (grid.at(x, y).walls[0]) drawLine(window, xpos, ypos, xpos + cellSize, ypos, CP_WALL);
+                if (grid.at(x, y).walls[1]) drawLine(window, xpos, ypos, xpos, ypos + cellSize, CP_WALL);
+                if (grid.at(x, y).walls[2]) drawLine(window, xpos + cellSize, ypos, xpos + cellSize, ypos + cellSize, CP_WALL);
+                if (grid.at(x, y).walls[3]) drawLine(window, xpos, ypos + cellSize, xpos + cellSize, ypos + cellSize, CP_WALL);
             }
+        }
+        
+        // Solution Path
+        if (!isUser && solverWon) {
+             const auto& sol = solverGetSolution();
+             if (sol.size() > 1) {
+                 for (size_t i = 0; i < sol.size() - 1; ++i) {
+                     float x1 = offsetX + sol[i].x * cellSize + cellSize / 2.0f;
+                     float y1 = sol[i].y * cellSize + cellSize / 2.0f;
+                     float x2 = offsetX + sol[i+1].x * cellSize + cellSize / 2.0f;
+                     float y2 = sol[i+1].y * cellSize + cellSize / 2.0f;
+                     
+                     sf::Vertex line[] = {
+                         {sf::Vector2f(x1, y1), CP_SOLUTION},
+                         {sf::Vector2f(x2, y2), CP_SOLUTION}
+                     };
+                     window.draw(line, 2, sf::PrimitiveType::Lines);
+                 }
+             }
         }
         
         // Goal
         sf::RectangleShape goalRect(sf::Vector2f(cellSize * 0.6f, cellSize * 0.6f));
         goalRect.setPosition(sf::Vector2f(offsetX + goal.x * cellSize + cellSize * 0.2f, goal.y * cellSize + cellSize * 0.2f));
-        goalRect.setFillColor(sf::Color::Red);
+        goalRect.setFillColor(CP_GOAL);
         window.draw(goalRect);
 
         // Player/Solver
@@ -402,9 +551,11 @@ void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const 
         }
 
         if (userWon || solverWon) {
-            // Juego terminado
+             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) {
+                 window.close();
+                 return;
+             }
         } else {
-            // UPDATE USER
             if (inputClock.getElapsedTime() > inputDebounce) {
                 int dx = 0, dy = 0;
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) dy = -1;
@@ -413,7 +564,6 @@ void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const 
                 else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) dx = 1;
 
                 if (dx != 0 || dy != 0) {
-                    // Check walls
                     bool blocked = false;
                     const auto& cell = grid.at(userPos.x, userPos.y);
                     if (dy == -1 && cell.walls[0]) blocked = true;
@@ -424,61 +574,58 @@ void runUserVsComputer(Grid &grid, Coord start, Coord goal, int cellSize, const 
                     if (!blocked) {
                         userPos.x += dx;
                         userPos.y += dy;
+                        userVisited[userPos.x][userPos.y] = true;
                         inputClock.restart();
-                        
-                        if (userPos.x == goal.x && userPos.y == goal.y) {
-                            userWon = true;
-                            std::cout << "USER WINS!" << std::endl;
-                        }
+                        if (userPos.x == goal.x && userPos.y == goal.y) userWon = true;
                     }
                 }
             }
 
-            // UPDATE SOLVER
             solverTimer += solverClock.restart();
             if (solverTimer >= solverStepTime) {
-                if (!solver->finished()) {
-                    solver->step();
-                    solverTimer = sf::Time::Zero;
-                    
-                    Coord solverPos;
-                    if (solver->getCurrent(solverPos)) {
-                        if (solverPos.x == goal.x && solverPos.y == goal.y) {
-                            solverWon = true;
-                            std::cout << "COMPUTER WINS!" << std::endl;
-                        }
-                    }
+                if (!solverFinished()) solverStep();
+                solverTimer = sf::Time::Zero;
+                if (solverFinished()) {
+                    const auto& sol = solverGetSolution();
+                    if (!sol.empty() && sol.back().x == goal.x && sol.back().y == goal.y) solverWon = true;
                 }
+                Coord solverPos;
+                if (solverCurrent(solverPos) && solverPos.x == goal.x && solverPos.y == goal.y) solverWon = true;
             }
         }
 
-        window.clear(sf::Color::Black);
+        window.clear(CP_BG);
 
         // Draw Left (User)
-        drawMaze(0, userPos, sf::Color::Cyan);
+        drawMaze(0, userPos, CP_USER, true);
 
         // Separator
         sf::RectangleShape sep(sf::Vector2f(20.0f, (float)winH));
         sep.setPosition(sf::Vector2f((float)grid.width() * cellSize, 0.0f));
-        sep.setFillColor(sf::Color(100, 100, 100));
+        sep.setFillColor(sf::Color(50, 50, 100)); // Darker separator
         window.draw(sep);
 
         // Draw Right (Solver)
         Coord solverCur = start;
-        solver->getCurrent(solverCur);
-        drawMaze((float)grid.width() * cellSize + 20.0f, solverCur, sf::Color::Magenta);
+        solverCurrent(solverCur);
+        drawMaze((float)grid.width() * cellSize + 20.0f, solverCur, CP_SOLVER, false);
 
         if (userWon) {
-            // Un simple indicador visual de victoria
-             sf::RectangleShape winOverlay(sf::Vector2f(300.0f, 100.0f));
-             winOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
-             winOverlay.setFillColor(sf::Color(0, 200, 0, 200));
-             window.draw(winOverlay);
+            if (duckLoaded) window.draw(duckSprite);
+            else {
+                 sf::RectangleShape winOverlay(sf::Vector2f(300.0f, 100.0f));
+                 winOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
+                 winOverlay.setFillColor(sf::Color(0, 200, 0, 200));
+                 window.draw(winOverlay);
+            }
         } else if (solverWon) {
-             sf::RectangleShape loseOverlay(sf::Vector2f(300.0f, 100.0f));
-             loseOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
-             loseOverlay.setFillColor(sf::Color(200, 0, 0, 200));
-             window.draw(loseOverlay);
+            if (wastedLoaded) window.draw(wastedSprite);
+            else {
+                 sf::RectangleShape loseOverlay(sf::Vector2f(300.0f, 100.0f));
+                 loseOverlay.setPosition(sf::Vector2f(winW/2.0f - 150.0f, winH/2.0f - 50.0f));
+                 loseOverlay.setFillColor(sf::Color(200, 0, 0, 200));
+                 window.draw(loseOverlay);
+            }
         }
 
         window.display();
@@ -1091,16 +1238,56 @@ int main() {
         }
 
         if (modeChoice == 4) {
-             Grid grid(GRID_W, GRID_H);
-             Coord start(GRID_W / 2, GRID_H / 2);
-             Coord goal = getRandomCorner(grid, start);
+             // Maze Size Selection
+             std::vector<std::string> sizeOptions = { 
+                 "Small (21x21)", 
+                 "Medium (31x31)", 
+                 "Large (51x51)", 
+                 "Extra Large (71x71)" 
+             };
+             Menu sizeMenu(sizeOptions, "Select Maze Size");
+             int sizeChoice = sizeMenu.run(menuWindow);
+             if (sizeChoice < 0) continue;
 
-             // Use DFS for generation (fast and reliable)
-             ChallengeSystem challenges(grid); // dummy
-             DFSAlgorithm genAlgo(grid);
-             while(!genAlgo.finished()) genAlgo.step();
+             int gW = 21, gH = 21;
+             switch (sizeChoice) {
+                 case 0: gW = 21; gH = 21; break;
+                 case 1: gW = 31; gH = 31; break;
+                 case 2: gW = 51; gH = 51; break;
+                 case 3: gW = 71; gH = 71; break;
+                 default: gW = 31; gH = 31; break;
+             }
 
-             runUserVsComputer(grid, start, goal, CELL_SIZE, "User vs Solver");
+             // Menu selection for Opponent Algorithm
+             std::vector<std::string> opponentOptions = { "A*", "Greedy", "UCS", "DFS" };
+             Menu opponentMenu(opponentOptions, "Select Opponent Algorithm");
+             int oppChoice = opponentMenu.run(menuWindow);
+             if (oppChoice < 0) continue;
+
+             SolverStrategy strategy;
+             switch(oppChoice) {
+                 case 0: strategy = SolverStrategy::ASTAR; break;
+                 case 1: strategy = SolverStrategy::GREEDY; break;
+                 case 2: strategy = SolverStrategy::UCS; break;
+                 case 3: strategy = SolverStrategy::DFS; break;
+                 default: strategy = SolverStrategy::ASTAR; break;
+             }
+
+             // Menu selection for Difficulty
+             std::vector<std::string> diffOptions = { "Easy (Slow)", "Medium (Normal)", "Hard (Fast)" };
+             Menu diffMenu(diffOptions, "Select Difficulty");
+             int diffChoice = diffMenu.run(menuWindow);
+             if (diffChoice < 0) continue;
+
+             sf::Time stepTime;
+             switch(diffChoice) {
+                 case 0: stepTime = sf::milliseconds(1800); break; // Easy
+                 case 1: stepTime = sf::milliseconds(600); break;  // Medium
+                 case 2: stepTime = sf::milliseconds(150); break;  // Hard
+                 default: stepTime = sf::milliseconds(600); break;
+             }
+
+             runUserVsComputer(gW, gH, "User vs Solver", strategy, stepTime);
              continue;
         }
 

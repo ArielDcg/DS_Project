@@ -19,6 +19,8 @@ public:
     // Devuelve el camino completo si se resolvió
     const std::vector<Coord> &getSolution() const;
 
+    const std::vector<std::vector<bool>> &getVisited() const { return visited; }
+
 private:
     Grid &g;
     Coord start;
