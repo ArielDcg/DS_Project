@@ -11,12 +11,18 @@
 #include "CollectorSolver.h"
 #include "AlgorithmRankingAVL.h"
 #include "ExplorationHeatmap.h"
+#include "OriginShiftMaze.h"
+#include "PortalSystem.h"
+#include "GraphAnalysis.h"
 
 #include "DFSAlgorithm.cpp"
 #include "PrimsAlgorithm.cpp"
 #include "HuntAndKillAlgorithm.cpp"
 #include "KruskalsAlgorithm.cpp"
 #include "CollectorMazeGen.cpp"
+#include "OriginShiftMaze.cpp"
+#include "PortalSystem.cpp"
+#include "GraphAnalysis.cpp"
 
 #include <memory>
 #include <string>
@@ -1204,6 +1210,371 @@ void displayHeatmap(const Grid& grid, const ExplorationHeatmap& heatmap,
 }
 
 
+// ===================================
+// ORIGIN SHIFT MODE - Laberinto Viviente
+// ===================================
+void runOriginShiftMode(Grid& grid, MazeAlgorithm& algo, int cellSize, 
+                        const std::string& title, SolverStrategy strategy,
+                        const sf::Font* fontPtr = nullptr) {
+    unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
+    unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
+    sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), 
+                           title + " - ORIGIN SHIFT [" + getStrategyName(strategy) + "]");
+    window.setFramerateLimit(60);
+
+    sf::Clock clock;
+    sf::Time accumulator = sf::Time::Zero;
+    sf::Time stepTime = sf::milliseconds(8);
+    sf::Time originShiftTime = sf::milliseconds(200); // Velocidad del Origin Shift
+    sf::Time originShiftAccum = sf::Time::Zero;
+    
+    bool mazeGenerated = false;
+    std::unique_ptr<OriginShiftMaze> originShift;
+    std::unique_ptr<MazeSolver> solver;
+    bool solverStarted = false;
+    
+    Coord start(grid.width() / 2, grid.height() / 2);
+    Coord goal = getRandomCorner(grid, start);
+
+    auto drawLine = [&](sf::RenderTarget& target, float x1, float y1, float x2, float y2, const sf::Color& col) {
+        sf::Vertex verts[2];
+        verts[0].position = sf::Vector2f(x1, y1);
+        verts[0].color = col;
+        verts[1].position = sf::Vector2f(x2, y2);
+        verts[1].color = col;
+        target.draw(verts, 2, sf::PrimitiveType::Lines);
+    };
+
+    while (window.isOpen()) {
+        while (auto evOpt = window.pollEvent()) {
+            const sf::Event& ev = *evOpt;
+            if (ev.is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+        }
+
+        sf::Time dt = clock.restart();
+        accumulator += dt;
+        
+        while (accumulator >= stepTime) {
+            if (!algo.finished()) {
+                algo.step();
+            } else if (!mazeGenerated) {
+                // Inicializar Origin Shift después de generar el laberinto
+                originShift = std::make_unique<OriginShiftMaze>(grid);
+                originShift->initializeFromMaze();
+                mazeGenerated = true;
+            } else if (!solverStarted) {
+                // Iniciar solver
+                solver = std::make_unique<MazeSolver>(grid, start, goal);
+                solverStarted = true;
+            } else if (!solver->finished()) {
+                solver->step();
+            }
+            accumulator -= stepTime;
+        }
+        
+        // Origin Shift: cambiar raíz periódicamente
+        if (mazeGenerated && originShift) {
+            originShiftAccum += dt;
+            while (originShiftAccum >= originShiftTime) {
+                originShift->update();
+                originShift->applyToGrid();
+                originShiftAccum -= originShiftTime;
+            }
+        }
+
+        window.clear(sf::Color::Black);
+
+        // Dibujar grid
+        for (int y = 0; y < grid.height(); ++y) {
+            for (int x = 0; x < grid.width(); ++x) {
+                float xpos = x * cellSize;
+                float ypos = y * cellSize;
+
+                if (grid.at(x, y).visited) {
+                    sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
+                    rect.setPosition(sf::Vector2f(xpos, ypos));
+                    rect.setFillColor(sf::Color(46, 46, 46));
+                    window.draw(rect);
+                }
+
+                // Paredes
+                if (grid.at(x, y).walls[0]) drawLine(window, xpos, ypos, xpos + cellSize, ypos, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[1]) drawLine(window, xpos, ypos, xpos, ypos + cellSize, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[2]) drawLine(window, xpos + cellSize, ypos, xpos + cellSize, ypos + cellSize, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[3]) drawLine(window, xpos, ypos + cellSize, xpos + cellSize, ypos + cellSize, sf::Color(220,220,220));
+            }
+        }
+        
+        // Dibujar TODAS las raíces del Origin Shift (cada una con color diferente)
+        if (originShift) {
+            const auto& roots = originShift->getRoots();
+            std::vector<sf::Color> rootColors = {
+                sf::Color(255, 100, 255, 200),  // Magenta
+                sf::Color(100, 255, 255, 200),  // Cyan
+                sf::Color(255, 255, 100, 200)   // Amarillo
+            };
+            
+            for (size_t i = 0; i < roots.size(); ++i) {
+                const Coord& root = roots[i];
+                sf::Color color = rootColors[i % rootColors.size()];
+                
+                sf::CircleShape rootMarker(cellSize * 0.3f);
+                rootMarker.setPosition(sf::Vector2f(root.x * cellSize + cellSize * 0.2f, 
+                                                     root.y * cellSize + cellSize * 0.2f));
+                rootMarker.setFillColor(color);
+                rootMarker.setOutlineThickness(2.0f);
+                rootMarker.setOutlineColor(sf::Color::White);
+                window.draw(rootMarker);
+            }
+        }
+
+        // Start/Goal
+        sf::CircleShape startMarker(cellSize * 0.4f);
+        startMarker.setPosition(sf::Vector2f(start.x * cellSize + cellSize * 0.1f, start.y * cellSize + cellSize * 0.1f));
+        startMarker.setFillColor(sf::Color(0, 255, 0, 150));
+        window.draw(startMarker);
+
+        sf::CircleShape goalMarker(cellSize * 0.4f);
+        goalMarker.setPosition(sf::Vector2f(goal.x * cellSize + cellSize * 0.1f, goal.y * cellSize + cellSize * 0.1f));
+        goalMarker.setFillColor(sf::Color(255, 0, 0, 150));
+        window.draw(goalMarker);
+        
+        // Solver path
+        if (solver) {
+            const auto& visited = solver->getVisited();
+            for (int y = 0; y < grid.height(); ++y) {
+                for (int x = 0; x < grid.width(); ++x) {
+                    if (visited[x][y]) {
+                        sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                        r.setPosition(sf::Vector2f(x * cellSize, y * cellSize));
+                        r.setFillColor(sf::Color(120, 80, 160, 100));
+                        window.draw(r);
+                    }
+                }
+            }
+            
+            Coord cur;
+            if (solver->getCurrent(cur)) {
+                sf::RectangleShape s(sf::Vector2f((float)cellSize, (float)cellSize));
+                s.setPosition(sf::Vector2f((float)cur.x * cellSize, (float)cur.y * cellSize));
+                s.setFillColor(sf::Color(255, 200, 0, 170));
+                window.draw(s);
+            }
+        }
+
+        // Overlay con información del GRAFO
+        if (fontPtr) {
+            sf::Text titleText(*fontPtr, "ORIGIN SHIFT - Living Maze (Graph Structure)", 16);
+            titleText.setPosition(sf::Vector2f(6.f, 6.f));
+            titleText.setFillColor(sf::Color(255, 100, 255));
+            window.draw(titleText);
+            
+            if (originShift) {
+                std::string graphInfo = "Graph: " + std::to_string(originShift->getNodeCount()) + " nodes, " 
+                                      + std::to_string(originShift->getEdgeCount()) + " edges, "
+                                      + std::to_string(originShift->getRoots().size()) + " active roots";
+                sf::Text infoText(*fontPtr, graphInfo, 12);
+                infoText.setPosition(sf::Vector2f(6.f, 26.f));
+                infoText.setFillColor(sf::Color(100, 255, 255));
+                window.draw(infoText);
+            }
+        }
+        
+        window.display();
+    }
+}
+
+// ===================================
+// PORTAL JUMPER MODE
+// ===================================
+void runPortalMode(Grid& grid, MazeAlgorithm& algo, int cellSize,
+                   const std::string& title, SolverStrategy strategy,
+                   const sf::Font* fontPtr = nullptr) {
+    unsigned int winW = static_cast<unsigned int>(grid.width() * cellSize);
+    unsigned int winH = static_cast<unsigned int>(grid.height() * cellSize);
+    sf::RenderWindow window(sf::VideoMode(sf::Vector2u(winW, winH)), 
+                           title + " - PORTAL JUMPER [" + getStrategyName(strategy) + "]");
+    window.setFramerateLimit(60);
+
+    sf::Clock clock;
+    sf::Time accumulator = sf::Time::Zero;
+    sf::Time stepTime = sf::milliseconds(8);
+    
+    Coord start(grid.width() / 2, grid.height() / 2);
+    Coord goal = getRandomCorner(grid, start);
+    
+    std::unique_ptr<PortalSystem> portals;
+    std::unique_ptr<MazeSolver> solver;
+    bool mazeGenerated = false;
+    bool solverStarted = false;
+    
+    // Para análisis de grafos
+    std::unique_ptr<GraphAnalysis> graphAnalysis;
+    GraphStats graphStats;
+    bool diameterCalculated = false;
+
+    auto drawLine = [&](sf::RenderTarget& target, float x1, float y1, float x2, float y2, const sf::Color& col) {
+        sf::Vertex verts[2];
+        verts[0].position = sf::Vector2f(x1, y1);
+        verts[0].color = col;
+        verts[1].position = sf::Vector2f(x2, y2);
+        verts[1].color = col;
+        target.draw(verts, 2, sf::PrimitiveType::Lines);
+    };
+
+    while (window.isOpen()) {
+        while (auto evOpt = window.pollEvent()) {
+            const sf::Event& ev = *evOpt;
+            if (ev.is<sf::Event::Closed>()) {
+                window.close();
+                return;
+            }
+        }
+
+        accumulator += clock.restart();
+        while (accumulator >= stepTime) {
+            if (!algo.finished()) {
+                algo.step();
+            } else if (!mazeGenerated) {
+                // Generar portales y calcular diámetro
+                portals = std::make_unique<PortalSystem>(grid.width(), grid.height());
+                portals->generatePortals(start, goal, 2);
+                
+                graphAnalysis = std::make_unique<GraphAnalysis>(grid);
+                graphAnalysis->buildAdjacencyList();
+                graphStats = graphAnalysis->calculateDiameter();
+                diameterCalculated = true;
+                
+                mazeGenerated = true;
+            } else if (!solverStarted) {
+                solver = std::make_unique<MazeSolver>(grid, start, goal);
+                solverStarted = true;
+            } else if (!solver->finished()) {
+                solver->step();
+            }
+            accumulator -= stepTime;
+        }
+
+        window.clear(sf::Color::Black);
+
+        // Grid
+        for (int y = 0; y < grid.height(); ++y) {
+            for (int x = 0; x < grid.width(); ++x) {
+                float xpos = x * cellSize;
+                float ypos = y * cellSize;
+
+                if (grid.at(x, y).visited) {
+                    sf::RectangleShape rect(sf::Vector2f((float)cellSize, (float)cellSize));
+                    rect.setPosition(sf::Vector2f(xpos, ypos));
+                    rect.setFillColor(sf::Color(46, 46, 46));
+                    window.draw(rect);
+                }
+
+                if (grid.at(x, y).walls[0]) drawLine(window, xpos, ypos, xpos + cellSize, ypos, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[1]) drawLine(window, xpos, ypos, xpos, ypos + cellSize, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[2]) drawLine(window, xpos + cellSize, ypos, xpos + cellSize, ypos + cellSize, sf::Color(220,220,220));
+                if (grid.at(x, y).walls[3]) drawLine(window, xpos, ypos + cellSize, xpos + cellSize, ypos + cellSize, sf::Color(220,220,220));
+            }
+        }
+        
+        // Dibujar diámetro (Cyan)
+        if (diameterCalculated && graphStats.path.size() > 1) {
+            for (size_t i = 0; i < graphStats.path.size() - 1; ++i) {
+                const Coord& a = graphStats.path[i];
+                const Coord& b = graphStats.path[i + 1];
+                float ax = a.x * cellSize + cellSize * 0.5f;
+                float ay = a.y * cellSize + cellSize * 0.5f;
+                float bx = b.x * cellSize + cellSize * 0.5f;
+                float by = b.y * cellSize + cellSize * 0.5f;
+                drawLine(window, ax, ay, bx, by, sf::Color(0, 255, 255, 180));
+            }
+        }
+        
+        // Portales (Verde brillante)
+        if (portals) {
+            for (const Portal& p : portals->getPortals()) {
+                // Portal A
+                sf::RectangleShape pa(sf::Vector2f((float)cellSize, (float)cellSize));
+                pa.setPosition(sf::Vector2f(p.a.x * cellSize, p.a.y * cellSize));
+                pa.setFillColor(sf::Color(0, 255, 100, 150));
+                pa.setOutlineThickness(2.0f);
+                pa.setOutlineColor(sf::Color(0, 255, 0));
+                window.draw(pa);
+                
+                // Portal B
+                sf::RectangleShape pb(sf::Vector2f((float)cellSize, (float)cellSize));
+                pb.setPosition(sf::Vector2f(p.b.x * cellSize, p.b.y * cellSize));
+                pb.setFillColor(sf::Color(0, 255, 100, 150));
+                pb.setOutlineThickness(2.0f);
+                pb.setOutlineColor(sf::Color(0, 255, 0));
+                window.draw(pb);
+                
+                // Línea conectando portales
+                float ax = p.a.x * cellSize + cellSize * 0.5f;
+                float ay = p.a.y * cellSize + cellSize * 0.5f;
+                float bx = p.b.x * cellSize + cellSize * 0.5f;
+                float by = p.b.y * cellSize + cellSize * 0.5f;
+                drawLine(window, ax, ay, bx, by, sf::Color(0, 255, 0, 100));
+            }
+        }
+
+        // Start/Goal
+        sf::CircleShape startMarker(cellSize * 0.4f);
+        startMarker.setPosition(sf::Vector2f(start.x * cellSize + cellSize * 0.1f, start.y * cellSize + cellSize * 0.1f));
+        startMarker.setFillColor(sf::Color(0, 255, 0, 200));
+        window.draw(startMarker);
+
+        sf::CircleShape goalMarker(cellSize * 0.4f);
+        goalMarker.setPosition(sf::Vector2f(goal.x * cellSize + cellSize * 0.1f, goal.y * cellSize + cellSize * 0.1f));
+        goalMarker.setFillColor(sf::Color(255, 0, 0, 200));
+        window.draw(goalMarker);
+        
+        // Solver
+        if (solver) {
+            const auto& visited = solver->getVisited();
+            for (int y = 0; y < grid.height(); ++y) {
+                for (int x = 0; x < grid.width(); ++x) {
+                    if (visited[x][y]) {
+                        sf::RectangleShape r(sf::Vector2f((float)cellSize, (float)cellSize));
+                        r.setPosition(sf::Vector2f(x * cellSize, y * cellSize));
+                        r.setFillColor(sf::Color(180, 50, 255, 80));
+                        window.draw(r);
+                    }
+                }
+            }
+            
+            Coord cur;
+            if (solver->getCurrent(cur)) {
+                sf::RectangleShape s(sf::Vector2f((float)cellSize, (float)cellSize));
+                s.setPosition(sf::Vector2f((float)cur.x * cellSize, (float)cur.y * cellSize));
+                s.setFillColor(sf::Color(255, 200, 0, 170));
+                window.draw(s);
+            }
+        }
+
+        // Overlay
+        if (fontPtr) {
+            sf::Text titleText(*fontPtr, "PORTAL JUMPER - Wormholes Active", 16);
+            titleText.setPosition(sf::Vector2f(6.f, 6.f));
+            titleText.setFillColor(sf::Color(0, 255, 100));
+            window.draw(titleText);
+            
+            if (diameterCalculated) {
+                std::string diamStr = "Graph Diameter: " + std::to_string(graphStats.diameter);
+                sf::Text diamText(*fontPtr, diamStr, 12);
+                diamText.setPosition(sf::Vector2f(6.f, 26.f));
+                diamText.setFillColor(sf::Color(0, 255, 255));
+                window.draw(diamText);
+            }
+        }
+        
+        window.display();
+    }
+}
+
 int main() {
     const int CELL_SIZE = 20;
 
@@ -1221,7 +1592,8 @@ int main() {
             "Collector Mode (3 Treasures)",
             "Algorithm Ranking (AVL Tree)",
             "Exploration Heatmap (Sparse Matrix)",
-            "User vs Solver Mode"
+            "User vs Solver Mode",
+            "Origin Shift (Living Maze)"
         };
         Menu modeMenu(modeOptions, "Select Game Mode");
         int modeChoice = modeMenu.run(menuWindow);
@@ -1289,6 +1661,43 @@ int main() {
 
              runUserVsComputer(gW, gH, "User vs Solver", strategy, stepTime);
              continue;
+        }
+
+        // ===== ORIGIN SHIFT MODE (modeChoice == 5) =====
+        if (modeChoice == 5) {
+            // Menú generador
+            int genChoice = menu.run(menuWindow);
+            if (genChoice < 0) continue;
+            
+            Grid grid(GRID_W, GRID_H);
+            std::unique_ptr<MazeAlgorithm> algo;
+            std::string title;
+            
+            switch (genChoice) {
+                case 0: algo.reset(new DFSAlgorithm(grid)); title = "DFS"; break;
+                case 1: algo.reset(new PrimsAlgorithm(grid)); title = "Prim's"; break;
+                case 2: algo.reset(new HuntAndKillAlgorithm(grid)); title = "Hunt&Kill"; break;
+                case 3: algo.reset(new KruskalsAlgorithm(grid)); title = "Kruskal's"; break;
+                default: algo.reset(new DFSAlgorithm(grid)); title = "DFS"; break;
+            }
+            
+            // Menú solver
+            std::vector<std::string> stratOpts = { "A*", "Greedy", "UCS", "DFS" };
+            Menu stratMenu(stratOpts, "Choose Solver");
+            int stratChoice = stratMenu.run(menuWindow);
+            if (stratChoice < 0) continue;
+            
+            SolverStrategy strategy;
+            switch (stratChoice) {
+                case 0: strategy = SolverStrategy::ASTAR; break;
+                case 1: strategy = SolverStrategy::GREEDY; break;
+                case 2: strategy = SolverStrategy::UCS; break;
+                case 3: strategy = SolverStrategy::DFS; break;
+                default: strategy = SolverStrategy::ASTAR; break;
+            }
+            
+            runOriginShiftMode(grid, *algo, CELL_SIZE, title, strategy, fontPtr);
+            continue;
         }
 
         bool isCollectorMode = (modeChoice == 1);

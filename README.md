@@ -40,7 +40,7 @@ make
 
 ## Modos de Juego
 
-El programa ofrece 4 modos distintos de funcionamiento:
+El programa ofrece **6 modos** distintos de funcionamiento:
 
 ### 1. **Classic Mode**
 Modo tradicional de generación y resolución de laberintos.
@@ -55,7 +55,47 @@ Modo desafiante donde el solver debe recolectar 3 tesoros antes de llegar a la m
 - **Estrategias disponibles**: A*, Greedy, UCS, DFS
 - Visualización con colores diferentes para cada segmento del camino
 
-### 3. **Algorithm Ranking (AVL Tree)** - NUEVO ⭐
+### 3. **User vs Solver Mode**
+Compite contra un algoritmo de solución en tiempo real.
+- **Controles**: W/A/S/D para moverse
+- **Objetivo**: Llegar a la meta antes que el solver
+- **Dificultad ajustable**: Easy (solver lento), Medium, Hard (solver rápido)
+
+### 4. **Origin Shift (Living Maze)** - NUEVO ⭐ (Grafo)
+El laberinto **cambia en tiempo real** mientras el solver intenta resolverlo.
+
+#### ¿Qué es Origin Shift?
+El laberinto se representa como un **grafo dirigido** (árbol) donde cada celda apunta hacia una "raíz". Cuando la raíz se mueve, las conexiones del grafo cambian, modificando las paredes del laberinto.
+
+#### Estructura de Datos: Lista de Adyacencia
+```cpp
+// parentMap[x][y] = dirección hacia el padre (0=Up, 1=Left, 2=Right, 3=Down)
+// -1 significa que es una raíz
+std::vector<std::vector<int>> parentMap;
+```
+
+Esta es una **lista de adyacencia implícita** donde cada nodo conoce su conexión con el padre.
+
+#### Múltiples Raíces Simultáneas
+Para aumentar la dificultad, se implementaron **3 raíces** que se mueven simultáneamente:
+
+| Raíz | Color | Ubicación Inicial |
+|------|-------|-------------------|
+| 1 | 🟣 Magenta | Centro del mapa |
+| 2 | 🔵 Cyan | Esquina superior-izquierda |
+| 3 | 🟡 Amarillo | Esquina inferior-derecha |
+
+#### Métricas del Grafo (mostradas en pantalla)
+- **Nodes**: Total de nodos (celdas) = width × height
+- **Edges**: Aristas (conexiones sin pared). En un árbol: edges ≈ nodes - 1
+- **Active Roots**: Número de raíces modificando el grafo
+
+#### ¿Por qué usar un Grafo?
+1. **Representación eficiente**: Solo almacenamos la dirección del padre por celda
+2. **Modificación O(1)**: Cambiar una arista es simplemente actualizar un valor en parentMap
+3. **Inversión de aristas**: El algoritmo Origin Shift invierte aristas del grafo, demostrando operaciones típicas de grafos
+
+### 5. **Algorithm Ranking (AVL Tree)**
 Sistema de benchmarking que compara el rendimiento de los **algoritmos de solución (solvers)**.
 
 #### ¿Qué hace?
@@ -121,7 +161,7 @@ El Árbol AVL auto-balanceado mantiene los solvers ordenados por score de manera
 - **Ordenamiento**: In-order traversal da ranking ordenado
 - **Auto-balanceo**: Garantiza eficiencia sin importar el orden de inserción
 
-### 4. **Exploration Heatmap (Sparse Matrix)** - NUEVO ⭐
+### 6. **Exploration Heatmap (Sparse Matrix)**
 Visualización del comportamiento de exploración de los algoritmos de solución.
 
 #### ¿Cómo acceder al Heatmap?
@@ -327,6 +367,9 @@ Verificación de la propiedad de laberinto perfecto mediante búsqueda de camino
 | Hunt-and-Kill   | Circular Queue           | Búsqueda secuencial eficiente            |
 | Kruskal         | Priority Queue           | Selección óptima de paredes por peso     |
 | DFS Solver      | Stack                    | Búsqueda de solución única               |
+| **Origin Shift** | **Lista Adyacencia (parentMap)** | **Representación de grafo dirigido** |
+| Algorithm Ranking | AVL Tree               | Ranking auto-balanceado de solvers       |
+| Exploration Heatmap | Sparse Matrix        | Almacenamiento eficiente de visitas      |
 
 ---
 
